@@ -36,7 +36,6 @@ DEVKEY_HDR = b'X-Developer-Key'
 REQ_HDRS = [b'from', b'subject']
 DEFAULT_CONFIG = {
     'publickeypath': ['ref::.keys', 'ref::.local-keys'],
-    'gpgusedefaultkeyring': 'yes',
 }
 
 # Quick cache for key info
@@ -428,7 +427,7 @@ class PatattMessage:
         ds = DevsigHeader()
         ds.set_headers(self.canon_headers)
         ds.set_body(self.canon_body)
-        ds.set_field('l', str(len(self.body)))
+        ds.set_field('l', str(len(self.canon_body)))
         if identity and identity != self.canon_identity:
             ds.set_field('i', identity)
         if selector:
@@ -828,7 +827,7 @@ def cmd_sign(cmdargs, config: dict) -> None:
             sys.exit(1)
 
 
-def validate_message(msgdata: bytes, sources: list) -> list:
+def validate_message(msgdata: bytes, sources: list, trim_body: bool = False) -> list:
     errors = list()
     goodsigs = list()
     success = False
@@ -865,7 +864,7 @@ def validate_message(msgdata: bytes, sources: list) -> list:
             continue
 
         try:
-            signtime = pm.validate(i, pkey)
+            signtime = pm.validate(i, pkey, trim_body=trim_body)
             success = True
         except ValidationError:
             errors.append('%s/%s failed to validate using a=%s, pkey=%s' % (i, s, a, keysrc))
@@ -901,10 +900,15 @@ def cmd_validate(cmdargs, config: dict):
     if pdir not in sources:
         sources.append(pdir)
 
+    if config.get('trimbody', 'no') == 'yes':
+        trim_body = True
+    else:
+        trim_body = False
+
     allgood = True
     for fn, msgdata in messages.items():
         try:
-            goodsigs = validate_message(msgdata, sources)
+            goodsigs = validate_message(msgdata, sources, trim_body=trim_body)
             for identity, signtime, keysrc, algo in goodsigs:
                 logger.critical('PASS | %s | %s', identity, fn)
                 if keysrc:
