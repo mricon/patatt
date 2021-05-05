@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 if which patatt>/dev/null 2>&1; then
     # We have it in path, so just execute it
-    patatt -q sign --hook "${1}"
+    patatt sign --hook "${1}"
 else
     # Assume we're symlinked into a git checkout
     REAL_SCRIPT=$(realpath -e ${BASH_SOURCE[0]})

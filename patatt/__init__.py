@@ -927,7 +927,7 @@ def cmd_validate(cmdargs, config: dict):
         sys.exit(1)
 
 
-def cmd_gen(cmdargs, config: dict) -> None:
+def cmd_genkey(cmdargs, config: dict) -> None:
     try:
         from nacl.signing import SigningKey
     except ModuleNotFoundError:
@@ -958,7 +958,7 @@ def cmd_gen(cmdargs, config: dict) -> None:
         logger.critical('Use a different -n or pass -f to overwrite it')
         raise RuntimeError('Key already exists')
 
-    logger.info('Generating a new ed25519 keypair')
+    logger.critical('Generating a new ed25519 keypair')
     newkey = SigningKey.generate()
 
     # Make sure we write it as 0600
@@ -967,11 +967,11 @@ def cmd_gen(cmdargs, config: dict) -> None:
 
     with open(skey, 'wb', opener=priv_opener) as fh:
         fh.write(base64.b64encode(bytes(newkey)))
-        logger.info('Wrote: %s', skey)
+        logger.critical('Wrote: %s', skey)
 
     with open(pkey, 'wb') as fh:
         fh.write(base64.b64encode(newkey.verify_key.encode()))
-        logger.info('Wrote: %s', pkey)
+        logger.critical('Wrote: %s', pkey)
 
     # Also copy it into our local keyring
     dpkey = os.path.join(pdir, make_pkey_path('ed25519', config.get('identity'), 'default'))
@@ -979,24 +979,24 @@ def cmd_gen(cmdargs, config: dict) -> None:
     if not os.path.exists(dpkey):
         with open(dpkey, 'wb') as fh:
             fh.write(base64.b64encode(newkey.verify_key.encode()))
-            logger.info('Wrote: %s', dpkey)
+            logger.critical('Wrote: %s', dpkey)
     else:
         spkey = os.path.join(pdir, make_pkey_path('ed25519', config.get('identity'), identifier))
         with open(spkey, 'wb') as fh:
             fh.write(base64.b64encode(newkey.verify_key.encode()))
-            logger.info('Wrote: %s', spkey)
+            logger.critical('Wrote: %s', spkey)
 
-    logger.info('Add the following to your .git/config (or global ~/.gitconfig):')
-    logger.info('---')
+    logger.critical('Add the following to your .git/config (or global ~/.gitconfig):')
+    logger.critical('---')
     if cmdargs.section:
-        logger.info('[patatt "%s"]', cmdargs.section)
+        logger.critical('[patatt "%s"]', cmdargs.section)
     else:
-        logger.info('[patatt]')
-    logger.info('    signingkey = ed25519:%s', identifier)
-    logger.info('---')
-    logger.info('Next, communicate the contents of the following file to the')
-    logger.info('repository keyring maintainers for inclusion into the project:')
-    logger.info(pkey)
+        logger.critical('[patatt]')
+    logger.critical('    signingkey = ed25519:%s', identifier)
+    logger.critical('---')
+    logger.critical('Next, communicate the contents of the following file to the')
+    logger.critical('repository keyring maintainers for inclusion into the project:')
+    logger.critical(pkey)
 
 
 def command() -> None:
@@ -1031,7 +1031,7 @@ def command() -> None:
                         help='Name to use for the key, e.g. "workstation", or "default"')
     sp_gen.add_argument('-f', '--force', action='store_true', default=False,
                         help='Overwrite any existing keys, if found')
-    sp_gen.set_defaults(func=cmd_gen)
+    sp_gen.set_defaults(func=cmd_genkey)
 
     _args = parser.parse_args()
 
