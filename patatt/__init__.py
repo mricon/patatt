@@ -749,7 +749,11 @@ def cmd_sign(cmdargs, config: dict) -> None:
             logger.critical('       Perhaps you need to run genkey first?')
             sys.exit(1)
 
-    messages = _load_messages(cmdargs)
+    try:
+        messages = _load_messages(cmdargs)
+    except IOError as ex:
+        logger.critical('ERROR: %s', ex)
+        sys.exit(1)
 
     sk = config.get('signingkey')
     if sk.startswith('ed25519:'):
@@ -862,7 +866,12 @@ def validate_message(msgdata: bytes, sources: list) -> list:
 
 
 def cmd_validate(cmdargs, config: dict):
-    messages = _load_messages(cmdargs)
+    try:
+        messages = _load_messages(cmdargs)
+    except IOError as ex:
+        logger.critical('ERROR: %s', ex)
+        sys.exit(1)
+
     ddir = get_data_dir()
     pdir = os.path.join(ddir, 'public')
     sources = config.get('publickeypath', list())
