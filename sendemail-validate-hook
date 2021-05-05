@@ -6,6 +6,6 @@ else
     # Assume we're symlinked into a git checkout
     REAL_SCRIPT=$(realpath -e ${BASH_SOURCE[0]})
     SCRIPT_TOP="${SCRIPT_TOP:-$(dirname ${REAL_SCRIPT})}"
-    PATATT_TOP=$(realpath -e ${SCRIPT_TOP}/..)
+    PATATT_TOP=$(realpath -e ${SCRIPT_TOP})
     exec env PYTHONPATH="${PATATT_TOP}" python3 "${PATATT_TOP}/patatt/__init__.py" sign --hook "${1}"
 fi

@@ -880,11 +880,20 @@ def validate_message(msgdata: bytes, sources: list) -> list:
 
 
 def cmd_validate(cmdargs, config: dict):
-    try:
-        messages = _load_messages(cmdargs)
-    except IOError as ex:
-        logger.critical('E: %s', ex)
-        sys.exit(1)
+    import mailbox
+    if len(cmdargs.msgfile) == 1:
+        # Try to open as an mbox file
+        mbox = mailbox.mbox(cmdargs.msgfile[0])
+        messages = dict()
+        for msg in mbox:
+            subject = msg.get('Subject', 'No subject')
+            messages[subject] = msg.as_bytes()
+    else:
+        try:
+            messages = _load_messages(cmdargs)
+        except IOError as ex:
+            logger.critical('E: %s', ex)
+            sys.exit(1)
 
     ddir = get_data_dir()
     pdir = os.path.join(ddir, 'public')
@@ -896,21 +905,19 @@ def cmd_validate(cmdargs, config: dict):
     for fn, msgdata in messages.items():
         try:
             goodsigs = validate_message(msgdata, sources)
-            logger.critical('PASS: %s', os.path.basename(fn))
             for identity, signtime, keysrc, algo in goodsigs:
-                logger.info('      by : %s (%s)', identity, algo)
+                logger.critical('PASS | %s | %s', identity, fn)
                 if keysrc:
-                    logger.info('      key: %s', keysrc)
+                    logger.info('      key: %s/%s', algo, keysrc)
                 else:
-                    logger.info('      key: default keyring')
+                    logger.info('      key: default GnuPG keyring')
 
         except ValidationError as ex:
             allgood = False
-            logger.critical('FAIL: %s', os.path.basename(fn))
-            logger.critical('      err: %s', ex)
+            logger.critical('FAIL | err: %s | %s', ex, fn)
         except RuntimeError as ex:
             allgood = False
-            logger.critical('E: %s: %s' % (fn, ex))
+            logger.critical('ERR  | err: %s | %s', ex, fn)
 
     if not allgood:
         sys.exit(1)
@@ -1012,7 +1019,7 @@ def command() -> None:
     sp_sign.set_defaults(func=cmd_sign)
 
     sp_val = subparsers.add_parser('validate', help='Validate a devsig-signed message')
-    sp_val.add_argument('msgfile', nargs='*', help='Signed RFC2822 message files to validate')
+    sp_val.add_argument('msgfile', nargs='*', help='Individual signed message files to validate or an mbox')
     sp_val.set_defaults(func=cmd_validate)
 
     sp_gen = subparsers.add_parser('genkey', help='Generate a new ed25519 keypair')
