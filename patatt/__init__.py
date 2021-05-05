@@ -35,7 +35,7 @@ DEVSIG_HDR = b'X-Developer-Signature'
 DEVKEY_HDR = b'X-Developer-Key'
 REQ_HDRS = [b'from', b'subject']
 DEFAULT_CONFIG = {
-    'publickeypath': ['ref::.keys', 'ref::.local-keys'],
+    'keyringsrc': ['ref::.keys', 'ref:refs/meta/keyring:', 'ref::.local-keys'],
 }
 
 # Quick cache for key info
@@ -671,6 +671,7 @@ def make_pkey_path(keytype: str, identity: str, selector: str) -> str:
 
 def get_public_key(source: str, keytype: str, identity: str, selector: str) -> Tuple[bytes, str]:
     keypath = make_pkey_path(keytype, identity, selector)
+    logger.debug('Looking for %s in %s', keypath, source)
 
     if source.find('ref:') == 0:
         gittop = get_git_toplevel()
@@ -896,7 +897,10 @@ def cmd_validate(cmdargs, config: dict):
 
     ddir = get_data_dir()
     pdir = os.path.join(ddir, 'public')
-    sources = config.get('publickeypath', list())
+    sources = config.get('keyringsrc')
+    if not sources:
+        sources = ['ref::.keys', 'ref:refs/meta/keyring:', 'ref::.local-keys']
+
     if pdir not in sources:
         sources.append(pdir)
 
@@ -1054,7 +1058,7 @@ def command() -> None:
         ch.setLevel(logging.CRITICAL)
 
     logger.addHandler(ch)
-    config = get_config_from_git(r'patatt\..*', section=_args.section, defaults=DEFAULT_CONFIG)
+    config = get_config_from_git(r'patatt\..*', section=_args.section)
 
     if 'func' not in _args:
         parser.print_help()
