@@ -1,0 +1,30 @@
+From 82d3e4a03a72b787849fd406e985f3027fa04907 Mon Sep 17 00:00:00 2001
+From: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
+Date: Wed, 5 May 2021 17:11:46 -0400
+Subject: [PATCH] Specify subset of the world
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1620249230; l=403;
+ i=mricon@kernel.org; s=20210505; h=from:subject;
+ bh=aWNA6NFmS5xpRH5Gpy45nWiKCOnDOKHOYOV7Y6lyLcU=;
+ b=6eJfjTMpYzbUgSeNZf3OqQDjzFVooz6WfaEitTMIpYOWLCXRU8qCR3cjUTmLET5S8prJVMypxnZl
+ C1/hsoX8DWfyZmyquQSjCCNv2ISvZ8vEKCjXt2g0xmgK+XstajvB
+X-Developer-Key: i=mricon@kernel.org; a=ed25519;
+ pk=i+0Am6o59VU+dAfK4WhkCl56BrA+rY4cXlq3AbO5M8c=
+
+We don't want to say hello to the *whole* world, do we? Just the
+attested world, please.
+
+Signed-off-by: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
+---
+ hello.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/hello.txt b/hello.txt
+index 18249f3..977f79b 100644
+--- a/hello.txt
++++ b/hello.txt
+@@ -1 +1 @@
+-Hello world.
++Hello attested world.
+-- 
+2.30.2
+

@@ -817,7 +817,7 @@ def cmd_sign(cmdargs, config: dict) -> None:
                 with open(fn, 'wb') as fh:
                     fh.write(pm.as_bytes())
 
-                logger.critical('SIGN: %s', os.path.basename(fn))
+                logger.critical('SIGN | %s', os.path.basename(fn))
 
         except SigningError as ex:
             logger.critical('E: %s', ex)
@@ -868,7 +868,7 @@ def validate_message(msgdata: bytes, sources: list, trim_body: bool = False) -> 
             signtime = pm.validate(i, pkey, trim_body=trim_body)
             success = True
         except ValidationError:
-            errors.append('%s/%s failed to validate using a=%s, pkey=%s' % (i, s, a, keysrc))
+            errors.append('failed to validate using %s' % keysrc)
             continue
 
         goodsigs.append((i, signtime, keysrc, algo))
@@ -916,13 +916,15 @@ def cmd_validate(cmdargs, config: dict):
             for identity, signtime, keysrc, algo in goodsigs:
                 logger.critical('PASS | %s | %s', identity, fn)
                 if keysrc:
-                    logger.info('      key: %s/%s', algo, keysrc)
+                    logger.info('     | key: %s', keysrc)
                 else:
-                    logger.info('      key: default GnuPG keyring')
+                    logger.info('     | key: default GnuPG keyring')
 
         except ValidationError as ex:
             allgood = False
-            logger.critical('FAIL | err: %s | %s', ex, fn)
+            logger.critical('FAIL | %s | %s', ex, fn)
+            for error in ex.errors:
+                logger.critical('     | %s', error)
         except RuntimeError as ex:
             allgood = False
             logger.critical('ERR  | err: %s | %s', ex, fn)

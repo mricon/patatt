@@ -1,0 +1,30 @@
+From 82d3e4a03a72b787849fd406e985f3027fa04907 Mon Sep 17 00:00:00 2001
+From: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
+Date: Wed, 5 May 2021 17:11:46 -0400
+Subject: [PATCH] Specify subset of the world
+X-Developer-Signature: v=1; a=openpgp-sha256; l=403; h=from:subject;
+ bh=aWNA6NFmS5xpRH5Gpy45nWiKCOnDOKHOYOV7Y6lyLcU=;
+ b=owGbwMvMwCG27YjM47CUmTmMp9WSGBImc6WkxnPMSdRqXmTvUr/vDJNAxRutvTblG+aIdndskFKK
+ 9zDtKGVhEONgkBVTZCnbF7spqPChh1x6jynMHFYmkCEMXJwCMJH+Lob/MStfTr7/tPydwKmcytxN82
+ 0ObFx4Uf6ftazRnu0sKpsc3jH893rSXHbuxoXrL0SkeeN/75lzb/u39zrtrNMU9gVbqZfqcAEA
+X-Developer-Key: i=konstantin@linuxfoundation.org; a=openpgp;
+ fpr=DE0E66E32F1FDD0902666B96E63EDCA9329DD07E
+
+We don't want to say hello to the *whole* world, do we? Just the
+attested world, please.
+
+Signed-off-by: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
+---
+ hello.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/hello.txt b/hello.txt
+index 18249f3..977f79b 100644
+--- a/hello.txt
++++ b/hello.txt
+@@ -1 +1 @@
+-Hello world.
++Hello attested world.
+-- 
+2.30.2
+
