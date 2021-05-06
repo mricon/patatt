@@ -35,7 +35,7 @@ DEVSIG_HDR = b'X-Developer-Signature'
 DEVKEY_HDR = b'X-Developer-Key'
 REQ_HDRS = [b'from', b'subject']
 DEFAULT_CONFIG = {
-    'keyringsrc': ['ref::.keys', 'ref:refs/meta/keyring:', 'ref::.local-keys'],
+    'keyringsrc': ['ref::.keys', 'ref::.local-keys', 'ref:refs/meta/keyring:'],
 }
 
 # Quick cache for key info
@@ -591,7 +591,11 @@ def git_run_command(gitdir: Optional[str], args: list, stdin: Optional[bytes] = 
     return _run_command(args, stdin=stdin, env=env)
 
 
-def get_config_from_git(regexp: str, section: Optional[str] = None, defaults: Optional[dict] = None):
+def get_config_from_git(regexp: str, section: Optional[str] = None, defaults: Optional[dict] = None,
+                        multivals: Optional[list] = None):
+    if multivals is None:
+        multivals = list()
+
     args = ['config', '-z', '--get-regexp', regexp]
     ecode, out, err = git_run_command(None, args)
     if defaults is None:
@@ -625,12 +629,10 @@ def get_config_from_git(regexp: str, section: Optional[str] = None, defaults: Op
                 # We want config from a subsection specifically
                 continue
 
-            if cfgkey in gitconfig:
-                # Multiple entries become lists
-                if isinstance(gitconfig[cfgkey], str):
-                    gitconfig[cfgkey] = [gitconfig[cfgkey]]
-                if value not in gitconfig[cfgkey]:
-                    gitconfig[cfgkey].append(value)
+            if cfgkey in multivals:
+                if cfgkey not in gitconfig:
+                    gitconfig[cfgkey] = list()
+                gitconfig[cfgkey].append(value)
             else:
                 gitconfig[cfgkey] = value
         except ValueError:
@@ -713,7 +715,11 @@ def get_public_key(source: str, keytype: str, identity: str, selector: str) -> T
 
         raise KeyError('Could not find %s in %s' % (subpath, ref))
 
-    # It's a direct path, then
+    # It's a disk path, then
+    # Expand ~ and env vars
+    source = os.path.expanduser(source)
+    if source.find('$') >= 0:
+        source = os.path.expandvars(source)
     fullpath = os.path.join(source, keypath)
     if os.path.exists(fullpath):
         with open(fullpath, 'rb') as fh:
@@ -898,8 +904,6 @@ def cmd_validate(cmdargs, config: dict):
     ddir = get_data_dir()
     pdir = os.path.join(ddir, 'public')
     sources = config.get('keyringsrc')
-    if not sources:
-        sources = ['ref::.keys', 'ref:refs/meta/keyring:', 'ref::.local-keys']
 
     if pdir not in sources:
         sources.append(pdir)
@@ -1060,7 +1064,9 @@ def command() -> None:
         ch.setLevel(logging.CRITICAL)
 
     logger.addHandler(ch)
-    config = get_config_from_git(r'patatt\..*', section=_args.section)
+    config = get_config_from_git(r'patatt\..*', section=_args.section,
+                                 defaults=DEFAULT_CONFIG, multivals=['keyringsrc'])
+    logger.debug('config: %s', config)
 
     if 'func' not in _args:
         parser.print_help()

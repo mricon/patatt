@@ -3,27 +3,29 @@ patatt: cryptographic patch attestation for the masses
 
 This utility allows an easy way to add end-to-end cryptographic
 attestation to patches sent via mail. It does so by adapting the DKIM
-email signature standard to include cryptographic developer signatures
-via a separate X-Developer-Signature email header.
+email signature standard to include cryptographic signatures via the
+X-Developer-Signature email header.
+
+If your project workflow doesn't use patches sent via email, then you
+don't need this and should simply start signing your tags and commits.
 
 Basic concepts
 --------------
 DKIM is a widely adopted standard for domain-level attestation of email
 messages. It works by hashing the message body and certain individual
 headers, and then creating a cryptographic signature of the resulting
-hash. The receiving side then downloads the public key of the sending
-domain from its DNS record and checks the signature and header/body
-hashes. If the signature verifies and the resulting hashes are
-identical, then there is a high degree of assurance that neither the
-body of the message nor any of the signed headers were modified in
-transit.
+hash. The receiving side obtains the public key of the sending domain
+from its DNS record and checks the signature and header/body hashes. If
+the signature verifies and the resulting hashes are identical, then
+there is a high degree of assurance that neither the body of the message
+nor any of the signed headers were modified in transit.
 
 This utility uses the exact same DKIM standard to hash the headers and
 the body of the patch message, but uses a different set of fields and
 canonicalization routines:
 
 - the d= field is not used (no domain signatures involved)
-- the q= field is not used (key lookup is handled differently)
+- the q= field is not used (key lookup is left to the client)
 - the c= field is not used (see below for canonicalization)
 - the i= field is optional, but MUST be the canonical email address of
   the sender, if not the same as the From: field
@@ -31,15 +33,16 @@ canonicalization routines:
 Canonicalization
 ~~~~~~~~~~~~~~~~
 Patatt uses the "relaxed/simple" canonicalization as defined by the DKIM
-standard, but the message is first parsed by "git-mailinfo" in order to
-achieve the following:
+standard, but the message is first parsed by the "git-mailinfo" command
+in order to achieve the following:
 
 - normalize any content-transfer-encoding modifications (convert back
   from base64/quoted-printable/etc into 8-bit)
 - use any encountered in-body From: and Subject: headers to
   rewrite the outer message headers
-- perform any subject-line normalization in order to strip content not
-  considered by git-am when applying the patch
+- perform the subject-line normalization in order to strip content not
+  considered by git-am when applying the patch (i.e. drop [PATCH .*] and
+  other bracketed prefix content)
 
 To achieve this, the message is passed through git-mailinfo with the
 following flags::
@@ -52,8 +55,8 @@ together to form the body of the message, which is then normalized using
 CRLF line endings and the DKIM "simple" body canonicalization (any
 trailing blank lines are removed).
 
-Any other headers included in signing are canonicalized using the
-"relaxed" header canonicalization routines defined in the DKIM standard.
+Any other headers included in signing are modified using the "relaxed"
+header canonicalization routines as defined in the DKIM standard.
 
 In other words, the body and some of the headers are normalized and
 reconstituted using the "git-mailinfo" command, and then canonicalized
@@ -69,6 +72,16 @@ two signing/hashing schemes:
 - ed25519-sha256: exactly as defined in RFC8463
 - openpgp-sha256: uses OpenPGP to create the signature
 
+Note: Since GnuPG supports multiple signing key algorithms,
+openpgp-sha256 signatures can be done using EDDSA keys as well. However,
+since OpenPGP output includes additional headers, the "ed25519-sha256"
+and "openpgp-sha256" schemes are not interchangeable even when EDDSA
+keys are used in both cases.
+
+In the future, patatt may add support for more algorithms, especially if
+that allows incorporating TPM and U2F devices (e.g. for offloading
+credential storage and crypto operations into a sandboxed environment).
+
 X-Developer-Key header
 ~~~~~~~~~~~~~~~~~~~~~~
 Patatt adds a separate ``X-Developer-Key:`` header with public key
@@ -78,6 +91,9 @@ is included to make it easier for maintainers to obtain the
 contributor's public key for performing whatever necessary
 verification steps prior to including it into their individual or
 project-wide keyrings.
+
+This also allows keeping a historical record of contributor keys via
+list archive services such as lore.kernel.org and others.
 
 Getting started as contributor
 ------------------------------
@@ -91,7 +107,7 @@ You can install from pip::
 
 Make sure your PATH includes $HOME/.local/bin.
 
-Alternatively, you can clone the repository and symlink patatt.sh into
+Alternatively, you can clone this repository and symlink patatt.sh into
 your path::
 
     cd bin
@@ -116,9 +132,9 @@ example::
 
 Using ed25519
 ~~~~~~~~~~~~~
-If you don't already have a PGP key, you can opt to generate and use an
-ed25519 key instead (see below for some considerations on pros and cons
-of PGP vs ed25519 keys).
+If you don't already have a PGP key, you can opt to generate and use a
+new ed25519 key instead (see below for some considerations on pros and
+cons of PGP vs ed25519 keys).
 
 To generate a new keypair, run::
 
@@ -139,10 +155,11 @@ You will see an output similar to the following::
     repository keyring maintainers for inclusion into the project:
     /home/user/.local/share/patatt/public/20210505.pub
 
-Please make sure to back up your private key, located in ``~/.local/share/patatt/private``.
-It is short enough to simply print out.
+Please make sure to back up your new private key, located in
+``~/.local/share/patatt/private``. It is short enough to simply print
+out.
 
-Next, just do as instructions say. If the project to which you are
+Next, just do as instructions say. If the project for which you are
 contributing patches already uses patatt attestation, please work with
 the project maintainers to add your public key to the repository. If
 they aren't yet using patatt, just start signing your patches and
@@ -170,24 +187,24 @@ outgoing patches sent via git-send-email::
     $ echo 'patatt sign --hook "${1}"' > .git/hooks/sendemail-validate
     $ chmod a+x .git/hooks/sendemail-validate
 
-PGP vs ed25519 keys
-~~~~~~~~~~~~~~~~~~~
+PGP vs ed25519 keys considerations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 If you don't already have a PGP key, you may wonder whether it makes
 sense to create a new PGP key or start using standalone ed25519 keys.
 
 Reasons to choose PGP:
 
 - you can protect the PGP private key with a passphrase (gpg-agent will
-  manage it for you)
+  manage it for you so you only need to enter it once per session)
 - you can move your PGP key to an OpenPGP-compliant smartcard to further
   protect your key from being leaked/stolen
-- you can use your PGP keys to sign git tags/commits, not just patches
+- you can use PGP keys to sign git tags/commits, not just mailed patches
 
 If you choose to create a new PGP key, you can follow the following
 guide:
 https://github.com/lfit/itpol/blob/master/protecting-code-integrity.md
 
-Reasons to choose standalone ed25519 keys:
+Reasons to choose a standalone ed25519 key:
 
 - much smaller signatures, especially compared to PGP RSA keys
 - implements the DKIM ed25519 signing standard
@@ -196,8 +213,8 @@ Reasons to choose standalone ed25519 keys:
 If you choose ed25519 keys, you will need to make sure that PyNaCl is
 installed (pip install should have already taken care of it for you).
 
-Getting started as git repository maintainer
---------------------------------------------
+Getting started as a project maintainer
+---------------------------------------
 Patatt implements basic signature validation, but it's a tool aimed
 primarily at contributors. If you are processing mailed-in patches, then
 you should look into using b4, which aims at making the entire process
@@ -207,26 +224,26 @@ version 0.7.0.
 - https://pypi.org/project/b4/
 
 That said, keyring management as discussed below applies both to patatt
-and b4.
+and b4, so you can read on for an overview.
 
 In-git pubkey management
 ~~~~~~~~~~~~~~~~~~~~~~~~
 The trickiest part of all decentralized PKI schemes is not the crypto
-itself, but public key distribution. PGP famously tried to solve this
-problem by relying on cross-key certification and keyservers, but the
-results were not encouraging.
+itself, but public key distribution and management. PGP famously tried
+to solve this problem by relying on cross-key certification and
+keyservers, but the results were not encouraging.
 
-However, within the context of git repositories, we already have a
-suitable mechanism for distributing developer public keys, which is the
-repository itself. Consider this:
+On the other hand, within the context of git repositories, we already
+have a suitable mechanism for distributing developer public keys, which
+is the repository itself. Consider this:
 
 - git is already decentralized and can be mirrored to multiple
   locations, avoiding any single points of failure
 - all contents are already versioned and key additions/removals can be
   audited and "git blame'd"
 - git commits themselves can be cryptographically signed, which allows a
-  small subset of keys to act as "trusted introducers" to many other
-  contributors
+  small subset of developers to act as "trusted introducers" to many
+  other contributors (mimicking the "keysigning" process)
 
 The idea of using git itself for keyring management was originally
 suggested by the did:git project, though we do not currently implement
@@ -248,6 +265,11 @@ The keyring is structured as follows::
             |
             - file: selector (e.g. "default")
 
+The main principle behind this structure was to make it easy to make key
+management by multiple project maintainers without causing any
+unnecessary git merge complications. Keeping all public keys in
+individual files should achieve this goal.
+
 For example, let's take the following signature::
 
     From: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
@@ -256,7 +278,7 @@ For example, let's take the following signature::
      b=Xzd0287MvPE9NLX7xbQ6xnyrvqQOMK01mxHnrPmm1f6O7KKyogc8YH6IAlwIPdo+jk1CkdYYQsyZ
      sS0cJdX2B4uTmV9mxOe7hssjtjLcj5/NU9zAw6WJARybaNAKH8rv
 
-The key would be located in the following subpath::
+The key would be found in the following subpath::
 
     .keys/ed25519/linuxfoundation.org/konstantin/default
 
@@ -268,19 +290,19 @@ If i= and s= fields are specified in the signature, as below::
      b=sSY2vXzju7zU3KK4VQ5vFa5iPpDr3nrf221lnpq2+uuXmCODlAsgoqDmjKUBmbPtlY1Bcb2N0XZQ
      0KX+OShCAAwB5U1dtFtRnB/mgVibMxwl68A7OivGIVYe491yll5q
 
-Then the path would reflect those changes::
+Then the path would reflect those parameters::
 
     .keys/ed25519/kernel.org/mricon/20210505
 
 In the case of ed25519 keys, the contents of the file are just the
-public key itself, base64-encoded. For openpgp keys, the format should
-be an ascii-armored public key export, e.g. using the following
-command::
+base64-encoded public key itself. For openpgp keys, the format should be
+the ascii-armored public key export, for example obtained by using the
+following command::
 
     gpg -a --export --export-options export-minimal keyid
 
-What keys to add to the keyring
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Whose keys to add to the keyring
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 It does not really make sense to require cryptographic attestation for
 patches submitted by occasional contributors. The only keys added to the
 keyring should be those of the core maintainers who have push access to
@@ -299,7 +321,7 @@ For large teams with thousands of regular contributors and teams of
 subsystem maintainers (e.g. the Linux kernel), it does not make sense to
 have a centrally managed keyring tracked in the main repository.
 Instead, each subsystem maintainer team should manage their own keyring
-in a separate ref of their repository.
+in a separate ref of their own repository.
 
 For example, to create a blank new ref called ``refs/meta/keyring``::
 
@@ -307,13 +329,20 @@ For example, to create a blank new ref called ``refs/meta/keyring``::
     git reset --hard
     mkdir ed25519 openpgp
 
-Then they can add keyring files just as described above and commit them
-to the keyring ref without worrying that this will interfere with their
-pull requests or git-format-patch operation. To commit and push the
-files after adding them, regular git operations are used::
+Individual public key files can then be added and committed following
+the same structure as described above. Keeping the keyring outside the
+regular development branch ensures that it doesn't interfere with
+submitted pull requests or git-format-patch operations. Keeping the ref
+under ``refs/meta/`` will hide it from most GUI interfaces, but if that
+is not the goal, then it can be stored in ``refs/heads`` just like any
+other branch.
+
+To commit and push the files after adding them, regular git operations
+should be used::
 
     git commit -asS
     git push origin HEAD:refs/meta/keyring
+    # Switch back to the development environment
     git checkout regular-branch
 
 To make changes to an existing keyring ref, a similar workflow can be
@@ -328,6 +357,12 @@ used::
     git push origin HEAD:refs/meta/keyring
     git checkout regular-branch
 
+Alternatively, if key additions/updates are frequent enough, the remote
+ref can be checked out into its own workdir and set up for proper
+remote tracking.
+
+Telling patatt where to find the keyring(s)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 To use the keyring with patatt or b4, just tell them which paths to
 check, via the ``keyringsrc`` setting (can be specified multiple
 times and will be checked in the listed order)::
@@ -339,7 +374,30 @@ times and will be checked in the listed order)::
         keyringsrc = ref:refs/meta/keyring:
         # You can fetch other project's keyring into its own ref
         keyringsrc = ref:refs/meta/someone-elses-keyring:
+        # Use a regular dir on disk
+        keyringsrc = ~/git/pgpkeys/keyring
 
-Support and contributing patches
---------------------------------
+For b4, use the same configuration under the ``[b4]`` section.
+
+External and local-only keyrings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Any path on disk can be used for a keyring location, and some will
+always be checked just in case. The following locations are added by
+default::
+
+    ref::.keys
+    ref::.local-keys
+    ref:refs/meta/keyring:
+    $XDG_DATA_HOME/patatt/public
+
+The "::" means "whatever ref is currently checked out", and
+$XDG_DATA_HOME usually points at ~/.local/share.
+
+Getting support and contributing patches
+----------------------------------------
 Please send patches and support requests to tools@linux.kernel.org.
+
+Submissions must be made under the terms of the Linux Foundation
+certificate of contribution and should include a Signed-off-by: line.
+Please read the DCO file for full legal definition of what that implies.
+
