@@ -222,8 +222,11 @@ class DevsigHeader:
     @staticmethod
     def _sign_ed25519(payload: bytes, privkey: bytes) -> Tuple[bytes, bytes]:
         global KEYCACHE
-        from nacl.signing import SigningKey
-        from nacl.encoding import Base64Encoder
+        try:
+            from nacl.signing import SigningKey
+            from nacl.encoding import Base64Encoder
+        except ModuleNotFoundError:
+            raise RuntimeError('This operation requires PyNaCl libraries')
 
         if privkey not in KEYCACHE:
             sk = SigningKey(privkey, encoder=Base64Encoder)
@@ -238,9 +241,12 @@ class DevsigHeader:
 
     @staticmethod
     def _validate_ed25519(sigdata: bytes, pubkey: bytes) -> bytes:
-        from nacl.signing import VerifyKey
-        from nacl.encoding import Base64Encoder
-        from nacl.exceptions import BadSignatureError
+        try:
+            from nacl.signing import VerifyKey
+            from nacl.encoding import Base64Encoder
+            from nacl.exceptions import BadSignatureError
+        except ModuleNotFoundError:
+            raise RuntimeError('This operation requires PyNaCl libraries')
 
         vk = VerifyKey(pubkey, encoder=Base64Encoder)
         try:
