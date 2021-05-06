@@ -684,7 +684,7 @@ def get_public_key(source: str, keytype: str, identity: str, selector: str) -> T
     if source.find('ref:') == 0:
         gittop = get_git_toplevel()
         if not gittop:
-            raise RuntimeError('Not in a git tree, so cannot use a ref: source')
+            raise KeyError('Not in a git tree, so cannot use a ref: source')
         # format is: ref:refspec:path
         # or it could omit the refspec, meaning "whatever the current ref"
         # but it should always have at least two ":"
