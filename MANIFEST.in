@@ -1,2 +1,4 @@
 include COPYING
+include DCO
 include README.rst
+include man/*.rst

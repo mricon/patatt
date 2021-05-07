@@ -33,8 +33,9 @@ setup(
     author_email='mricon@kernel.org',
     packages=['patatt'],
     license='MIT-0',
-    long_description=read('README'),
+    long_description=read('README.rst'),
     long_description_content_type='text/x-rst',
+    data_files = [('share/man/man5', ['man/patatt.5'])],
     keywords=['git', 'patches', 'attestation'],
     install_requires=[
         'pynacl',
