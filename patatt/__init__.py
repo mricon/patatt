@@ -33,6 +33,13 @@ GPGBIN = 'gpg'
 # Hardcoded defaults
 DEVSIG_HDR = b'X-Developer-Signature'
 DEVKEY_HDR = b'X-Developer-Key'
+
+# Result and severity levels
+RES_VALID = 0
+RES_NOKEY = 8
+RES_ERROR = 16
+RES_BADSIG = 32
+
 REQ_HDRS = [b'from', b'subject']
 DEFAULT_CONFIG = {
     'keyringsrc': ['ref::.keys', 'ref::.local-keys', 'ref:refs/meta/keyring:'],
@@ -862,7 +869,7 @@ def validate_message(msgdata: bytes, sources: list, trim_body: bool = False) -> 
             algo = 'openpgp'
         else:
             errors.append('%s/%s Unknown algorigthm: %s' % (i, s, a))
-            attestations.append((False, i, t, None, a, errors))
+            attestations.append((RES_ERROR, i, t, None, a, errors))
             continue
 
         pkey = keysrc = None
@@ -875,15 +882,15 @@ def validate_message(msgdata: bytes, sources: list, trim_body: bool = False) -> 
 
         if not pkey and algo == 'ed25519':
             errors.append('%s/%s no matching ed25519 key found' % (i, s))
-            attestations.append((False, i, t, None, algo, errors))
+            attestations.append((RES_NOKEY, i, t, None, algo, errors))
             continue
 
         try:
             signtime = pm.validate(i, pkey, trim_body=trim_body)
-            attestations.append((True, i, signtime, keysrc, algo, errors))
+            attestations.append((RES_VALID, i, signtime, keysrc, algo, errors))
         except ValidationError:
             errors.append('failed to validate using %s' % keysrc)
-            attestations.append((False, i, t, keysrc, algo, errors))
+            attestations.append((RES_BADSIG, i, t, keysrc, algo, errors))
 
     return attestations
 
@@ -916,29 +923,38 @@ def cmd_validate(cmdargs, config: dict):
     else:
         trim_body = False
 
-    allgood = True
+    highest_err = 0
     for fn, msgdata in messages.items():
         try:
             attestations = validate_message(msgdata, sources, trim_body=trim_body)
-            for passing, identity, signtime, keysrc, algo, errors in attestations:
-                if passing:
-                    logger.critical('PASS | %s | %s', identity, fn)
+            for result, identity, signtime, keysrc, algo, errors in attestations:
+                if result > highest_err:
+                    highest_err = result
+
+                if result == RES_VALID:
+                    logger.critical('  PASS | %s, %s', identity, fn)
                     if keysrc:
-                        logger.info('     | key: %s', keysrc)
+                        logger.info('       | key: %s', keysrc)
                     else:
-                        logger.info('     | key: default GnuPG keyring')
-                else:
-                    allgood = False
-                    logger.critical('FAIL | %s | %s', identity, fn)
+                        logger.info('       | key: default GnuPG keyring')
+                elif result <= RES_NOKEY:
+                    logger.critical(' NOKEY | %s, %s', identity, fn)
                     for error in errors:
-                        logger.critical('     | %s', error)
+                        logger.critical('       | %s', error)
+                elif result <= RES_ERROR:
+                    logger.critical(' ERROR | %s, %s', identity, fn)
+                    for error in errors:
+                        logger.critical('       | %s', error)
+                else:
+                    logger.critical('BADSIG | %s, %s', identity, fn)
+                    for error in errors:
+                        logger.critical('       | %s', error)
 
         except RuntimeError as ex:
-            allgood = False
-            logger.critical('ERR  | err: %s | %s', ex, fn)
+            highest_err = RES_ERROR
+            logger.critical(' ERROR | err: %s | %s', ex, fn)
 
-    if not allgood:
-        sys.exit(1)
+    sys.exit(highest_err)
 
 
 def cmd_genkey(cmdargs, config: dict) -> None:
