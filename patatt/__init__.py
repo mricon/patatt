@@ -42,7 +42,7 @@ DEFAULT_CONFIG = {
 KEYCACHE = dict()
 
 # My version
-__VERSION__ = '0.1.0'
+__VERSION__ = '0.2.0-dev'
 MAX_SUPPORTED_FORMAT_VERSION = 1
 
 
@@ -841,19 +841,19 @@ def cmd_sign(cmdargs, config: dict) -> None:
 
 
 def validate_message(msgdata: bytes, sources: list, trim_body: bool = False) -> list:
-    errors = list()
-    goodsigs = list()
-    success = False
+    attestations = list()
     pm = PatattMessage(msgdata)
     if not pm.signed:
-        errors.append('message is not signed')
-        raise ValidationError('message is not signed', errors)
+        logger.debug('message is not signed')
+        return attestations
 
     # Find all identities for which we have public keys
     for ds in pm.get_sigs():
+        errors = list()
         a = ds.get_field('a', decode=True)
         i = ds.get_field('i', decode=True)
         s = ds.get_field('s', decode=True)
+        t = ds.get_field('t', decode=True)
         if not s:
             s = 'default'
         if a.startswith('ed25519'):
@@ -862,6 +862,7 @@ def validate_message(msgdata: bytes, sources: list, trim_body: bool = False) -> 
             algo = 'openpgp'
         else:
             errors.append('%s/%s Unknown algorigthm: %s' % (i, s, a))
+            attestations.append((False, i, t, None, a, errors))
             continue
 
         pkey = keysrc = None
@@ -874,21 +875,17 @@ def validate_message(msgdata: bytes, sources: list, trim_body: bool = False) -> 
 
         if not pkey and algo == 'ed25519':
             errors.append('%s/%s no matching ed25519 key found' % (i, s))
+            attestations.append((False, i, t, None, algo, errors))
             continue
 
         try:
             signtime = pm.validate(i, pkey, trim_body=trim_body)
-            success = True
+            attestations.append((True, i, signtime, keysrc, algo, errors))
         except ValidationError:
             errors.append('failed to validate using %s' % keysrc)
-            continue
+            attestations.append((False, i, t, keysrc, algo, errors))
 
-        goodsigs.append((i, signtime, keysrc, algo))
-
-    if not success:
-        raise ValidationError('Failed to validate message', errors)
-
-    return goodsigs
+    return attestations
 
 
 def cmd_validate(cmdargs, config: dict):
@@ -922,19 +919,20 @@ def cmd_validate(cmdargs, config: dict):
     allgood = True
     for fn, msgdata in messages.items():
         try:
-            goodsigs = validate_message(msgdata, sources, trim_body=trim_body)
-            for identity, signtime, keysrc, algo in goodsigs:
-                logger.critical('PASS | %s | %s', identity, fn)
-                if keysrc:
-                    logger.info('     | key: %s', keysrc)
+            attestations = validate_message(msgdata, sources, trim_body=trim_body)
+            for passing, identity, signtime, keysrc, algo, errors in attestations:
+                if passing:
+                    logger.critical('PASS | %s | %s', identity, fn)
+                    if keysrc:
+                        logger.info('     | key: %s', keysrc)
+                    else:
+                        logger.info('     | key: default GnuPG keyring')
                 else:
-                    logger.info('     | key: default GnuPG keyring')
+                    allgood = False
+                    logger.critical('FAIL | %s | %s', identity, fn)
+                    for error in errors:
+                        logger.critical('     | %s', error)
 
-        except ValidationError as ex:
-            allgood = False
-            logger.critical('FAIL | %s | %s', ex, fn)
-            for error in ex.errors:
-                logger.critical('     | %s', error)
         except RuntimeError as ex:
             allgood = False
             logger.critical('ERR  | err: %s | %s', ex, fn)
