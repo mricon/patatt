@@ -41,9 +41,6 @@ RES_ERROR = 16
 RES_BADSIG = 32
 
 REQ_HDRS = [b'from', b'subject']
-DEFAULT_CONFIG = {
-    'keyringsrc': ['ref::.keys', 'ref::.local-keys', 'ref:refs/meta/keyring:'],
-}
 
 # Quick cache for key info
 KEYCACHE = dict()
@@ -598,9 +595,9 @@ def _run_command(cmdargs: list, stdin: bytes = None, env: Optional[dict] = None)
 def git_run_command(gitdir: Optional[str], args: list, stdin: Optional[bytes] = None,
                     env: Optional[dict] = None) -> Tuple[int, bytes, bytes]:
     if gitdir:
-        env = {'GIT_DIR': gitdir}
-
-    args = ['git', '--no-pager'] + args
+        args = ['git', '--git-dir', gitdir, '--no-pager'] + args
+    else:
+        args = ['git', '--no-pager'] + args
     return _run_command(args, stdin=stdin, env=env)
 
 
@@ -688,36 +685,55 @@ def get_public_key(source: str, keytype: str, identity: str, selector: str) -> T
     keypath = make_pkey_path(keytype, identity, selector)
     logger.debug('Looking for %s in %s', keypath, source)
 
-    if source.find('ref:') == 0:
-        gittop = get_git_toplevel()
+    # ref:refs/heads/someref:in-repo/path
+    if source.startswith('ref:'):
+        # split by :
+        parts = source.split(':', 4)
+        if len(parts) < 4:
+            raise ConfigurationError('Invalid ref, must have at least 3 colons: %s' % source)
+        gittop = parts[1]
+        gitref = parts[2]
+        gitsub = parts[3]
+        if not gittop:
+            gittop = get_git_toplevel()
         if not gittop:
             raise KeyError('Not in a git tree, so cannot use a ref: source')
-        # format is: ref:refspec:path
-        # or it could omit the refspec, meaning "whatever the current ref"
-        # but it should always have at least two ":"
-        chunks = source.split(':', 2)
-        if len(chunks) < 3:
-            logger.debug('ref: sources must have refspec and path, e.g.: ref:refs/heads/master:.keys')
-            raise ConfigurationError('Invalid ref: source: %s' % source)
+
+        gittop = os.path.expanduser(gittop)
+        if gittop.find('$') >= 0:
+            gittop = os.path.expandvars(gittop)
+        if os.path.isdir(os.path.join(gittop, '.git')):
+            gittop = os.path.join(gittop, '.git')
+
+        # it could omit the refspec, meaning "whatever the current ref"
         # grab the key from a fully ref'ed path
-        ref = chunks[1]
-        pathtop = chunks[2]
-        subpath = os.path.join(pathtop, keypath)
+        subpath = os.path.join(gitsub, keypath)
 
-        if not ref:
+        if not gitref:
             # What is our current ref?
-            cmdargs = ['git', 'symbolic-ref', 'HEAD']
-            ecode, out, err = _run_command(cmdargs)
+            cmdargs = ['symbolic-ref', 'HEAD']
+            ecode, out, err = git_run_command(gittop, cmdargs)
             if ecode == 0:
-                ref = out.decode().strip()
+                gitref = out.decode().strip()
+        if not gitref:
+            raise KeyError('Could not figure out current ref in %s' % gittop)
 
-        cmdargs = ['git']
-        keysrc = f'{ref}:{subpath}'
-        cmdargs += ['show', keysrc]
-        ecode, out, err = _run_command(cmdargs)
+        keysrc = f'{gitref}:{subpath}'
+        cmdargs = ['show', keysrc]
+        ecode, out, err = git_run_command(gittop, cmdargs)
         if ecode == 0:
+            # Handle one level of symlinks
+            if out.find(b'\n') < 0 < out.find(b'/'):
+                # Check this path as well
+                linktgt = os.path.normpath(os.path.join(os.path.dirname(subpath), out.decode()))
+                keysrc = f'{gitref}:{linktgt}'
+                cmdargs = ['show', keysrc]
+                ecode, out, err = git_run_command(gittop, cmdargs)
+                if ecode == 0:
+                    logger.debug('KEYSRC  : %s (symlinked)', keysrc)
+                    return out, 'ref:%s:%s' % (gittop, keysrc)
             logger.debug('KEYSRC  : %s', keysrc)
-            return out, keysrc
+            return out, 'ref:%s:%s' % (gittop, keysrc)
 
         # Does it exist on disk in gittop?
         fullpath = os.path.join(gittop, subpath)
@@ -726,7 +742,7 @@ def get_public_key(source: str, keytype: str, identity: str, selector: str) -> T
                 logger.debug('KEYSRC  : %s', fullpath)
                 return fh.read(), fullpath
 
-        raise KeyError('Could not find %s in %s' % (subpath, ref))
+        raise KeyError('Could not find %s in %s:%s' % (subpath, gittop, gitref))
 
     # It's a disk path, then
     # Expand ~ and env vars
@@ -1084,8 +1100,11 @@ def command() -> None:
         ch.setLevel(logging.CRITICAL)
 
     logger.addHandler(ch)
-    config = get_config_from_git(r'patatt\..*', section=_args.section,
-                                 defaults=DEFAULT_CONFIG, multivals=['keyringsrc'])
+    config = get_config_from_git(r'patatt\..*', section=_args.section, multivals=['keyringsrc'])
+    # Append some extra keyring locations
+    if 'keyringsrc' not in config:
+        config['keyringsrc'] = list()
+    config['keyringsrc'] += ['ref:::.keys', 'ref:::.local-keys', 'ref::refs/meta/keyring:']
     logger.debug('config: %s', config)
 
     if 'func' not in _args:

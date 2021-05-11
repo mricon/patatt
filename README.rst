@@ -368,12 +368,12 @@ check, via the ``keyringsrc`` setting (can be specified multiple
 times and will be checked in the listed order)::
 
     [patatt]
-        # Empty ref means "use currently checked out ref"
-        keyringsrc = ref::.keys
-        # Use a dedicated ref called refs/meta/keyring
-        keyringsrc = ref:refs/meta/keyring:
-        # You can fetch other project's keyring into its own ref
-        keyringsrc = ref:refs/meta/someone-elses-keyring:
+        # Empty ref means "use currently checked out ref in this repo"
+        keyringsrc = ref:::.keys
+        # Use a dedicated ref in this repo called refs/meta/keyring
+        keyringsrc = ref::refs/meta/keyring:
+        # Use a ref in a different repo
+        keyringsrc = ref:~/path/to/another/repo:refs/heads/main:.keys
         # Use a regular dir on disk
         keyringsrc = ~/git/pgpkeys/keyring
 
@@ -385,13 +385,13 @@ Any path on disk can be used for a keyring location, and some will
 always be checked just in case. The following locations are added by
 default::
 
-    ref::.keys
-    ref::.local-keys
-    ref:refs/meta/keyring:
+    ref:::.keys
+    ref:::.local-keys
+    ref::refs/meta/keyring:
     $XDG_DATA_HOME/patatt/public
 
-The "::" means "whatever ref is currently checked out", and
-$XDG_DATA_HOME usually points at ~/.local/share.
+The ":::" means "whatever ref is checked out in the current repo",
+and $XDG_DATA_HOME usually points at $HOME/.local/share.
 
 Getting support and contributing patches
 ----------------------------------------
