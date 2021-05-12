@@ -56,7 +56,7 @@ CRLF line endings and the DKIM "simple" body canonicalization (any
 trailing blank lines are removed).
 
 Any other headers included in signing are modified using the "relaxed"
-header canonicalization routines as defined in the DKIM standard.
+header canonicalization routines as defined in the DKIM RFC.
 
 In other words, the body and some of the headers are normalized and
 reconstituted using the "git-mailinfo" command, and then canonicalized
@@ -75,7 +75,7 @@ two signing/hashing schemes:
 Note: Since GnuPG supports multiple signing key algorithms,
 openpgp-sha256 signatures can be done using EDDSA keys as well. However,
 since OpenPGP output includes additional headers, the "ed25519-sha256"
-and "openpgp-sha256" schemes are not interchangeable even when EDDSA
+and "openpgp-sha256" schemes are not interchangeable even when ed25519
 keys are used in both cases.
 
 In the future, patatt may add support for more algorithms, especially if
@@ -88,8 +88,8 @@ Patatt adds a separate ``X-Developer-Key:`` header with public key
 information. It is merely informational and ISN'T and SHOULDN'T be used
 for performing any kind of message validation (for obvious reasons). It
 is included to make it easier for maintainers to obtain the
-contributor's public key for performing whatever necessary
-verification steps prior to including it into their individual or
+contributor's public key before performing whatever necessary
+verification steps prior to its inclusion into their individual or
 project-wide keyrings.
 
 This also allows keeping a historical record of contributor keys via
@@ -156,8 +156,8 @@ You will see an output similar to the following::
     /home/user/.local/share/patatt/public/20210505.pub
 
 Please make sure to back up your new private key, located in
-``~/.local/share/patatt/private``. It is short enough to simply print
-out.
+``~/.local/share/patatt/private``. It is short enough to simply
+print/write out for storing offline.
 
 Next, just do as instructions say. If the project for which you are
 contributing patches already uses patatt attestation, please work with
@@ -200,15 +200,14 @@ Reasons to choose PGP:
   protect your key from being leaked/stolen
 - you can use PGP keys to sign git tags/commits, not just mailed patches
 
-If you choose to create a new PGP key, you can follow the following
-guide:
+If you choose to create a new PGP key, you can use the following guide:
 https://github.com/lfit/itpol/blob/master/protecting-code-integrity.md
 
 Reasons to choose a standalone ed25519 key:
 
 - much smaller signatures, especially compared to PGP RSA keys
 - implements the DKIM ed25519 signing standard
-- faster crypto
+- faster operation
 
 If you choose ed25519 keys, you will need to make sure that PyNaCl is
 installed (pip install should have already taken care of it for you).
@@ -218,8 +217,8 @@ Getting started as a project maintainer
 Patatt implements basic signature validation, but it's a tool aimed
 primarily at contributors. If you are processing mailed-in patches, then
 you should look into using b4, which aims at making the entire process
-easier. B4 implements patatt-style signature validation starting with
-version 0.7.0.
+easier. B4 properly recognizes X-Developer-Signature headers starting
+with version 0.7.0 and uses the patatt library as well.
 
 - https://pypi.org/project/b4/
 
@@ -259,16 +258,16 @@ The keyring is structured as follows::
       |
       - dir: keytype (e.g. "ed25519" or "openpgp")
         |
-        - dir: domainname (e.g. "example.org")
+        - dir: address-domainname (e.g. "example.org")
           |
           - dir: address-localpart (e.g. "developer")
             |
             - file: selector (e.g. "default")
 
-The main principle behind this structure was to make it easy to make key
-management by multiple project maintainers without causing any
+The main reasoning behind this structure was to make it easy for
+multiple project maintainers to manage keys without causing any
 unnecessary git merge complications. Keeping all public keys in
-individual files should achieve this goal.
+individual files helps achieve this goal.
 
 For example, let's take the following signature::
 
@@ -349,9 +348,9 @@ To make changes to an existing keyring ref, a similar workflow can be
 used::
 
     git fetch origin refs/meta/keyring
-    git checkout FETCH_HEAD
     # Verify that the commit is signed
     git verify-commit FETCH_HEAD
+    git checkout FETCH_HEAD
     # make any changes to the keys
     git commit -asS
     git push origin HEAD:refs/meta/keyring
@@ -375,7 +374,7 @@ times and will be checked in the listed order)::
         # Use a ref in a different repo
         keyringsrc = ref:~/path/to/another/repo:refs/heads/main:.keys
         # Use a regular dir on disk
-        keyringsrc = ~/git/pgpkeys/keyring
+        keyringsrc = ~/git/korg-pgpkeys/.keyring
 
 For b4, use the same configuration under the ``[b4]`` section.
 
