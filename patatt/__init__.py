@@ -46,7 +46,7 @@ REQ_HDRS = [b'from', b'subject']
 KEYCACHE = dict()
 
 # My version
-__VERSION__ = '0.2.0'
+__VERSION__ = '0.3.0-dev'
 MAX_SUPPORTED_FORMAT_VERSION = 1
 
 
@@ -561,7 +561,7 @@ class PatattMessage:
         with tempfile.TemporaryDirectory(suffix='.git-mailinfo') as td:
             mf = os.path.join(td, 'm')
             pf = os.path.join(td, 'p')
-            cmdargs = ['git', 'mailinfo', '--encoding=utf-8', mf, pf]
+            cmdargs = ['git', 'mailinfo', '--encoding=utf-8', '--no-scissors', mf, pf]
             ecode, i, err = _run_command(cmdargs, stdin=payload)
             if ecode > 0:
                 logger.debug('FAILED  : Failed running git-mailinfo:')
@@ -1059,6 +1059,7 @@ def command() -> None:
                         help='Show debugging output')
     parser.add_argument('-s', '--section', dest='section', default=None,
                         help='Use config section [patatt "sectionname"]')
+    parser.add_argument('--version', action='version', version=__VERSION__)
 
     subparsers = parser.add_subparsers(help='sub-command help', dest='subcmd')
 

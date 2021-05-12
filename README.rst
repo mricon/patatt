@@ -47,7 +47,7 @@ in order to achieve the following:
 To achieve this, the message is passed through git-mailinfo with the
 following flags::
 
-    cat orig.msg | git mailinfo --encoding=utf-8 m p > i
+    cat orig.msg | git mailinfo --encoding=utf-8 --no-scissors m p > i
 
 Patatt then uses the data found in "i" to replace the From: and Subject:
 headers of the original message, and concatenates "m" and "p" back
