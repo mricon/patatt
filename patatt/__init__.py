@@ -915,7 +915,12 @@ def cmd_validate(cmdargs, config: dict):
     import mailbox
     if len(cmdargs.msgfile) == 1:
         # Try to open as an mbox file
-        mbox = mailbox.mbox(cmdargs.msgfile[0])
+        try:
+            mbox = mailbox.mbox(cmdargs.msgfile[0])
+        except IOError as ex:
+            logger.critical('E: %s', ex)
+            sys.exit(1)
+
         messages = dict()
         for msg in mbox:
             subject = msg.get('Subject', 'No subject')
