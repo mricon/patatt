@@ -46,7 +46,7 @@ REQ_HDRS = [b'from', b'subject']
 KEYCACHE = dict()
 
 # My version
-__VERSION__ = '0.3.0-dev'
+__VERSION__ = '0.3.0'
 MAX_SUPPORTED_FORMAT_VERSION = 1
 
 
