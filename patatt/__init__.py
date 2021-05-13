@@ -1044,6 +1044,7 @@ def cmd_genkey(cmdargs, config: dict) -> None:
     else:
         logger.critical('[patatt]')
     logger.critical('    signingkey = ed25519:%s', identifier)
+    logger.critical('    selector = %s', identifier)
     logger.critical('---')
     logger.critical('Next, communicate the contents of the following file to the')
     logger.critical('repository keyring maintainers for inclusion into the project:')
