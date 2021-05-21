@@ -41,12 +41,13 @@ RES_ERROR = 16
 RES_BADSIG = 32
 
 REQ_HDRS = [b'from', b'subject']
+OPT_HDRS = [b'message-id']
 
 # Quick cache for key info
 KEYCACHE = dict()
 
 # My version
-__VERSION__ = '0.3.0'
+__VERSION__ = '0.4.0-dev'
 MAX_SUPPORTED_FORMAT_VERSION = 1
 
 
@@ -126,29 +127,56 @@ class DevsigHeader:
         self._body_hash = base64.b64encode(hashed.digest())
 
     # do any git-mailinfo normalization prior to calling this
-    def set_headers(self, headers: list) -> None:
-        hfield = self.get_field('h')
-        if hfield:
-            # Make sure REQ_HEADERS are in this list
-            want_headers = [x.strip() for x in hfield.split(b':')]
-            for rqhdr in REQ_HDRS:
-                if rqhdr not in want_headers:
-                    raise ValidationError('Signature is missing a required header %s' % rqhdr.decode())
-        else:
-            want_headers = REQ_HDRS
-
-        self._headervals = list()
-        for header in headers:
+    def set_headers(self, headers: list, mode: str) -> None:
+        parsed = list()
+        allhdrs = set()
+        # DKIM operates on headers in reverse order
+        for header in reversed(headers):
             try:
                 left, right = header.split(b':', 1)
                 hname = left.strip().lower()
-                if hname not in want_headers:
-                    continue
+                parsed.append((hname, right))
+                allhdrs.add(hname)
             except ValueError:
                 continue
-            self._headervals.append(hname + b':' + DevsigHeader._dkim_canonicalize_header(right))
 
-        self.hdata['h'] = b':'.join(want_headers)
+        reqset = set(REQ_HDRS)
+        optset = set(OPT_HDRS)
+        self._headervals = list()
+        if mode == 'sign':
+            # Make sure REQ_HDRS is a subset of allhdrs
+            if not reqset.issubset(allhdrs):
+                raise SigningError('The following required headers not present: %s'
+                                   % (b', '.join(reqset.difference(allhdrs)).decode()))
+            # Add optional headers that are actually present
+            optpresent = allhdrs.intersection(optset)
+            signlist = list(reqset.union(optpresent))
+            self.hdata['h'] = b':'.join(signlist)
+
+        elif mode == 'validate':
+            hfield = self.get_field('h')
+            signlist = [x.strip() for x in hfield.split(b':')]
+            # Make sure REQ_HEADERS are in this set
+            if not reqset.issubset(set(signlist)):
+                raise ValidationError('The following required headers not signed: %s'
+                                      % (b', '.join(reqset.difference(set(signlist))).decode()))
+        else:
+            raise RuntimeError('Unknown set_header mode: %s' % mode)
+
+        for shname in signlist:
+            if shname not in allhdrs:
+                # Per RFC:
+                # Nonexistent header fields do not contribute to the signature computation (that is, they are
+                # treated as the null input, including the header field name, the separating colon, the header field
+                # value, and any CRLF terminator).
+                continue
+            at = 0
+            for hname, rawval in list(parsed):
+                if hname == shname:
+                    self._headervals.append(hname + b':' + DevsigHeader._dkim_canonicalize_header(rawval))
+                    parsed.pop(at)
+                    break
+                at += 1
 
     def sanity_check(self) -> None:
         if 'a' not in self.hdata:
@@ -435,7 +463,7 @@ class PatattMessage:
                 self.headers.remove(header)
         self.git_canonicalize()
         ds = DevsigHeader()
-        ds.set_headers(self.canon_headers)
+        ds.set_headers(self.canon_headers, mode='sign')
         ds.set_body(self.canon_body)
         ds.set_field('l', str(len(self.canon_body)))
         if identity and identity != self.canon_identity:
@@ -478,7 +506,7 @@ class PatattMessage:
             raise ValidationError('No signatures matching identity %s' % identity)
 
         self.git_canonicalize()
-        vds.set_headers(self.canon_headers)
+        vds.set_headers(self.canon_headers, mode='validate')
 
         if trim_body:
             lfield = vds.get_field('l')
