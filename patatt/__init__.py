@@ -1014,7 +1014,10 @@ def cmd_genkey(cmdargs, config: dict) -> None:
 
     # Do we have the signingkey defined?
     usercfg = get_config_from_git(r'user\..*')
-    if not config.get('identity') and usercfg.get('email'):
+    if not config.get('identity'):
+        if not usercfg.get('email'):
+            logger.critical('This operation requires user.email to be set')
+            sys.exit(1)
         # Use user.email
         config['identity'] = usercfg.get('email')
 
