@@ -1,0 +1,10 @@
+-----BEGIN PGP SIGNATURE-----
+Comment: This signature is for the .tar version of the archive
+Comment: git archive --format tar --prefix=patatt-0.4.0/ v0.4.0
+Comment: git version 2.31.1
+
+iHUEABYIAB0WIQR2vl2yUnHhSB5njDW2xBzjVmSZbAUCYKf0BAAKCRC2xBzjVmSZ
+bLNYAP4oLqbDV0xC8DdMGDRd4wm92qq4c/XxUliLqpUR4l7PYwEAsESfD8uTwgcO
+siYXvrjrnc9INyYvmu1rA/d/Z2WcsAY=
+=GbgH
+-----END PGP SIGNATURE-----
