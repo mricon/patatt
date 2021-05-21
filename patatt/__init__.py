@@ -149,8 +149,8 @@ class DevsigHeader:
                 raise SigningError('The following required headers not present: %s'
                                    % (b', '.join(reqset.difference(allhdrs)).decode()))
             # Add optional headers that are actually present
-            optpresent = allhdrs.intersection(optset)
-            signlist = list(reqset.union(optpresent))
+            optpresent = list(allhdrs.intersection(optset))
+            signlist = REQ_HDRS + sorted(optpresent)
             self.hdata['h'] = b':'.join(signlist)
 
         elif mode == 'validate':
