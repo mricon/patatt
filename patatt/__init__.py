@@ -933,6 +933,11 @@ def validate_message(msgdata: bytes, sources: list, trim_body: bool = False) -> 
             signtime = pm.validate(i, pkey, trim_body=trim_body)
             attestations.append((RES_VALID, i, signtime, keysrc, algo, errors))
         except ValidationError:
+            if keysrc is None:
+                # Not in default keyring
+                errors.append('%s/%s no matching openpgp key found' % (i, s))
+                attestations.append((RES_NOKEY, i, t, None, algo, errors))
+                continue
             errors.append('failed to validate using %s' % keysrc)
             attestations.append((RES_BADSIG, i, t, keysrc, algo, errors))
 
