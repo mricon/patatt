@@ -188,6 +188,10 @@ class DevsigHeader:
 
     def validate(self, keyinfo: Union[str, bytes, None]) -> str:
         self.sanity_check()
+        # Start by validating the body hash. If it fails to match, we can
+        # bail early, before needing to do any signature validation.
+        if self.get_field('bh') != self._body_hash:
+            raise BodyValidationError('Body content validation failed')
         # Check that we have a b= field
         if not self.get_field('b'):
             raise RuntimeError('Missing "b=" value')
@@ -214,9 +218,6 @@ class DevsigHeader:
         vdigest = hashed.digest()
         if sdigest != vdigest:
             raise ValidationError('Header validation failed')
-        # Now validate body hash
-        if self.get_field('bh') != self._body_hash:
-            raise BodyValidationError('Body content validation failed')
 
         return signtime
 
