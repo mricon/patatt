@@ -47,7 +47,7 @@ OPT_HDRS = [b'message-id']
 KEYCACHE = dict()
 
 # My version
-__VERSION__ = '0.4.2'
+__VERSION__ = '0.4.3'
 MAX_SUPPORTED_FORMAT_VERSION = 1
 
 
@@ -186,7 +186,7 @@ class DevsigHeader:
         if not self._headervals:
             raise RuntimeError('Must use set_headers first')
 
-    def validate(self, keyinfo: Union[str, bytes, None]) -> str:
+    def validate(self, keyinfo: Union[str, bytes, None]) -> Tuple[str, str]:
         self.sanity_check()
         # Start by validating the body hash. If it fails to match, we can
         # bail early, before needing to do any signature validation.
@@ -202,10 +202,11 @@ class DevsigHeader:
         if algo.startswith('ed25519'):
             sdigest = DevsigHeader._validate_ed25519(bdata, keyinfo)
             signtime = self.get_field('t', decode=True)
+            signkey = keyinfo
             if not signtime:
                 raise ValidationError('t= field is required for ed25519 sigs')
         elif algo.startswith('openpgp'):
-            sdigest, (good, valid, trusted, signtime) = DevsigHeader._validate_openpgp(bdata, keyinfo)
+            sdigest, (good, valid, trusted, signkey, signtime) = DevsigHeader._validate_openpgp(bdata, keyinfo)
         else:
             raise ValidationError('Unknown algorithm: %s', algo)
 
@@ -219,7 +220,7 @@ class DevsigHeader:
         if sdigest != vdigest:
             raise ValidationError('Header validation failed')
 
-        return signtime
+        return signkey, signtime
 
     def sign(self, keyinfo: bytes, split: bool = True) -> Tuple[bytes, bytes]:
         self.sanity_check()
@@ -347,18 +348,19 @@ class DevsigHeader:
         if ecode > 0:
             raise ValidationError('Failed to validate PGP signature')
 
-        good, valid, trusted, signtime = DevsigHeader._check_gpg_status(err)
+        good, valid, trusted, signkey, signtime = DevsigHeader._check_gpg_status(err)
         if good and valid:
-            return out, (good, valid, trusted, signtime)
+            return out, (good, valid, trusted, signkey, signtime)
 
         raise ValidationError('Failed to validate PGP signature')
 
     @staticmethod
-    def _check_gpg_status(status: bytes) -> Tuple[bool, bool, bool, str]:
+    def _check_gpg_status(status: bytes) -> Tuple[bool, bool, bool, str, str]:
         good = False
         valid = False
         trusted = False
         signtime = ''
+        signkey = ''
 
         gs_matches = re.search(rb'^\[GNUPG:] GOODSIG ([0-9A-F]+)\s+(.*)$', status, flags=re.M)
         if gs_matches:
@@ -366,12 +368,13 @@ class DevsigHeader:
         vs_matches = re.search(rb'^\[GNUPG:] VALIDSIG ([0-9A-F]+) (\d{4}-\d{2}-\d{2}) (\d+)', status, flags=re.M)
         if vs_matches:
             valid = True
+            signkey = vs_matches.groups()[0].decode()
             signtime = vs_matches.groups()[2].decode()
         ts_matches = re.search(rb'^\[GNUPG:] TRUST_(FULLY|ULTIMATE)', status, flags=re.M)
         if ts_matches:
             trusted = True
 
-        return good, valid, trusted, signtime
+        return good, valid, trusted, signkey, signtime
 
     @staticmethod
     def splitter(longstr: bytes, limit: int = 78) -> bytes:
@@ -931,7 +934,10 @@ def validate_message(msgdata: bytes, sources: list, trim_body: bool = False) -> 
             continue
 
         try:
-            signtime = pm.validate(i, pkey, trim_body=trim_body)
+            signkey, signtime = pm.validate(i, pkey, trim_body=trim_body)
+            if keysrc is None:
+                # Default keyring used
+                keysrc = '(default keyring)/%s' % signkey
             attestations.append((RES_VALID, i, signtime, keysrc, algo, errors))
         except ValidationError:
             if keysrc is None:
