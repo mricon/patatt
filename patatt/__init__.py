@@ -47,7 +47,7 @@ OPT_HDRS = [b'message-id']
 KEYCACHE = dict()
 
 # My version
-__VERSION__ = '0.4.3'
+__VERSION__ = '0.4.4'
 MAX_SUPPORTED_FORMAT_VERSION = 1
 
 
@@ -723,19 +723,21 @@ def get_public_key(source: str, keytype: str, identity: str, selector: str) -> T
         parts = source.split(':', 4)
         if len(parts) < 4:
             raise ConfigurationError('Invalid ref, must have at least 3 colons: %s' % source)
-        gittop = parts[1]
+        gitrepo = parts[1]
         gitref = parts[2]
         gitsub = parts[3]
-        if not gittop:
-            gittop = get_git_toplevel()
-        if not gittop:
-            raise KeyError('Not in a git tree, so cannot use a ref: source')
+        if not gitrepo:
+            gitrepo = get_git_toplevel()
+        if not gitrepo:
+            raise KeyError('Not in a git tree, so cannot use a ref:: source')
 
-        gittop = os.path.expanduser(gittop)
-        if gittop.find('$') >= 0:
-            gittop = os.path.expandvars(gittop)
-        if os.path.isdir(os.path.join(gittop, '.git')):
-            gittop = os.path.join(gittop, '.git')
+        gitrepo = os.path.expanduser(gitrepo)
+        if gitrepo.find('$') >= 0:
+            gitrepo = os.path.expandvars(gitrepo)
+        if os.path.isdir(os.path.join(gitrepo, '.git')):
+            gittop = os.path.join(gitrepo, '.git')
+        else:
+            gittop = gitrepo
 
         # it could omit the refspec, meaning "whatever the current ref"
         # grab the key from a fully ref'ed path
@@ -767,8 +769,8 @@ def get_public_key(source: str, keytype: str, identity: str, selector: str) -> T
             logger.debug('KEYSRC  : %s', keysrc)
             return out, 'ref:%s:%s' % (gittop, keysrc)
 
-        # Does it exist on disk in gittop?
-        fullpath = os.path.join(gittop, subpath)
+        # Does it exist on disk but hasn't been committed yet?
+        fullpath = os.path.join(gitrepo, subpath)
         if os.path.exists(fullpath):
             with open(fullpath, 'rb') as fh:
                 logger.debug('KEYSRC  : %s', fullpath)
