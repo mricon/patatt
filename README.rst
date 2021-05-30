@@ -184,8 +184,8 @@ Automatic signing via the sendemail-validate hook
 If everything is working well, you can start automatically signing all
 outgoing patches sent via git-send-email::
 
-    $ echo 'patatt sign --hook "${1}"' > .git/hooks/sendemail-validate
-    $ chmod a+x .git/hooks/sendemail-validate
+    $ echo 'patatt sign --hook "${1}"' > "$(git rev-parse --git-dir)/hooks/sendemail-validate"
+    $ chmod a+x "$(git rev-parse --git-dir)/hooks/sendemail-validate"
 
 PGP vs ed25519 keys considerations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
