@@ -91,7 +91,7 @@ class DevsigHeader:
 
     def from_bytes(self, hval: bytes) -> None:
         self.hval = DevsigHeader._dkim_canonicalize_header(hval)
-        hval = re.sub(rb'\s*', b'', hval)
+        hval = re.sub(rb'\s*', b'', self.hval)
         for chunk in hval.split(b';'):
             parts = chunk.split(b'=', 1)
             if len(parts) < 2:
@@ -392,6 +392,15 @@ class DevsigHeader:
 
     @staticmethod
     def _dkim_canonicalize_header(hval: bytes) -> bytes:
+        # Handle MIME encoded-word syntax or other types of header encoding if
+        # present. The decode_header() function requires a str argument (not
+        # bytes) so we must decode our bytes first, this is easy as RFC2822 (sec
+        # 2.2) says header fields must be composed of US-ASCII characters. The
+        # resulting string is re-encoded to allow further processing.
+        if b'?q?' in hval:
+            hval = hval.decode('ascii', errors='ignore')
+            hval = str(email.header.make_header(email.header.decode_header(hval)))
+            hval = hval.encode('utf-8')
         # We only do relaxed for headers
         #    o  Unfold all header field continuation lines as described in
         #       [RFC5322]; in particular, lines with terminators embedded in
