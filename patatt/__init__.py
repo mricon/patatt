@@ -47,7 +47,7 @@ OPT_HDRS = [b'message-id']
 KEYCACHE = dict()
 
 # My version
-__VERSION__ = '0.4.4'
+__VERSION__ = '0.4.5-dev'
 MAX_SUPPORTED_FORMAT_VERSION = 1
 
 
@@ -64,6 +64,12 @@ class ConfigurationError(Exception):
 
 
 class ValidationError(Exception):
+    def __init__(self, message: str, errors: Optional[list] = None):
+        super().__init__(message)
+        self.errors = errors
+
+
+class NoKeyError(ValidationError):
     def __init__(self, message: str, errors: Optional[list] = None):
         super().__init__(message)
         self.errors = errors
@@ -346,6 +352,8 @@ class DevsigHeader:
             ecode, out, err = gpg_run_command(vrfyargs, stdin=bsigdata)
 
         if ecode > 0:
+            if err.find(b'[GNUPG:] NO_PUBKEY '):
+                raise NoKeyError('No matching key found')
             raise ValidationError('Failed to validate PGP signature')
 
         good, valid, trusted, signkey, signtime = DevsigHeader._check_gpg_status(err)
@@ -952,12 +960,14 @@ def validate_message(msgdata: bytes, sources: list, trim_body: bool = False) -> 
             attestations.append((RES_VALID, i, signtime, keysrc, algo, errors))
         except ValidationError:
             if keysrc is None:
-                # Not in default keyring
-                errors.append('%s/%s no matching openpgp key found' % (i, s))
-                attestations.append((RES_NOKEY, i, t, None, algo, errors))
-                continue
-            errors.append('failed to validate using %s' % keysrc)
+                errors.append('failed to validate using default keyring')
+            else:
+                errors.append('failed to validate using %s' % keysrc)
             attestations.append((RES_BADSIG, i, t, keysrc, algo, errors))
+        except NoKeyError:
+            # Not in default keyring
+            errors.append('%s/%s no matching openpgp key found' % (i, s))
+            attestations.append((RES_NOKEY, i, t, None, algo, errors))
 
     return attestations
 
