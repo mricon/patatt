@@ -958,16 +958,16 @@ def validate_message(msgdata: bytes, sources: list, trim_body: bool = False) -> 
                 # Default keyring used
                 keysrc = '(default keyring)/%s' % signkey
             attestations.append((RES_VALID, i, signtime, keysrc, algo, errors))
+        except NoKeyError:
+            # Not in default keyring
+            errors.append('%s/%s no matching openpgp key found' % (i, s))
+            attestations.append((RES_NOKEY, i, t, None, algo, errors))
         except ValidationError:
             if keysrc is None:
                 errors.append('failed to validate using default keyring')
             else:
                 errors.append('failed to validate using %s' % keysrc)
             attestations.append((RES_BADSIG, i, t, keysrc, algo, errors))
-        except NoKeyError:
-            # Not in default keyring
-            errors.append('%s/%s no matching openpgp key found' % (i, s))
-            attestations.append((RES_NOKEY, i, t, None, algo, errors))
 
     return attestations
 
