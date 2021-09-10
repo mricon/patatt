@@ -47,7 +47,7 @@ OPT_HDRS = [b'message-id']
 KEYCACHE = dict()
 
 # My version
-__VERSION__ = '0.4.6'
+__VERSION__ = '0.4.7'
 MAX_SUPPORTED_FORMAT_VERSION = 1
 
 
@@ -1115,6 +1115,23 @@ def cmd_genkey(cmdargs, config: dict) -> None:
     logger.critical(pkey)
 
 
+def cmd_install_hook(cmdargs, config: dict):  # noqa
+    gitrepo = get_git_toplevel()
+    if not gitrepo:
+        logger.critical('Not in a git tree, cannot install hook')
+        sys.exit(1)
+    hookfile = os.path.join(gitrepo, '.git', 'hooks', 'sendemail-validate')
+    if os.path.exists(hookfile):
+        logger.critical('Hook already exists: %s', hookfile)
+        sys.exit(1)
+    with open(hookfile, 'w') as fh:
+        fh.write('#!/bin/sh\n')
+        fh.write('# installed by patatt install-hook\n')
+        fh.write('patatt sign --hook "${1}"\n')
+        os.chmod(hookfile, 0o755)
+    logger.critical('Hook installed as %s', hookfile)
+
+
 def command() -> None:
     import argparse
     # noinspection PyTypeChecker
@@ -1149,6 +1166,9 @@ def command() -> None:
     sp_gen.add_argument('-f', '--force', action='store_true', default=False,
                         help='Overwrite any existing keys, if found')
     sp_gen.set_defaults(func=cmd_genkey)
+
+    sp_install = subparsers.add_parser('install-hook', help='Install sendmail-validate hook into the current repo')
+    sp_install.set_defaults(func=cmd_install_hook)
 
     _args = parser.parse_args()
 

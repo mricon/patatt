@@ -182,7 +182,12 @@ You can now validate your own message::
 Automatic signing via the sendemail-validate hook
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 If everything is working well, you can start automatically signing all
-outgoing patches sent via git-send-email::
+outgoing patches sent via git-send-email. Inside the repo you want enabled
+for signing, run::
+
+    $ patatt install-hook
+
+Or you can do it manually::
 
     $ echo 'patatt sign --hook "${1}"' > "$(git rev-parse --git-dir)/hooks/sendemail-validate"
     $ chmod a+x "$(git rev-parse --git-dir)/hooks/sendemail-validate"

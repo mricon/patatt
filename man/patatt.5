@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH PATATT 5 "2021-05-21" "0.4.0" ""
+.TH PATATT 5 "2021-09-10" "0.4.7" ""
 .SH NAME
 PATATT \- DKIM-like cryptographic patch attestation
 .
@@ -32,7 +32,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 ..
 .SH SYNOPSIS
 .sp
-patatt {sign,validate,genkey} [options]
+patatt {sign,validate,genkey,install\-hook} [options]
 .SH DESCRIPTION
 .sp
 This tools allows cryptographically signing patches sent via email
@@ -75,7 +75,20 @@ end.
 .SH USING AS A GIT HOOK
 .sp
 If you use \fBgit\-send\-email\fP for sending patches, then you can get
-them automatically signed via the \fBsendemail\-validate\fP hook:
+them automatically signed via the \fBsendemail\-validate\fP hook. To install,
+run the following command in the repository you want enabled for signing:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ patatt install\-hook
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+Or you can install it manually:
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -95,6 +108,8 @@ $ chmod a+x .git/hooks/sendemail\-validate
 \fIpatatt validate\fP: basic validation for signed messages
 .IP \(bu 2
 \fIpatatt genkey\fP: generate a new ed25519 keypair
+.IP \(bu 2
+\fIpatatt install\-hook\fP: install sendemail\-validate hook in the current repository
 .UNINDENT
 .sp
 You can run \fBpatatt [subcommand] \-\-help\fP to see a summary of flags for

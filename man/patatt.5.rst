@@ -5,15 +5,15 @@ DKIM-like cryptographic patch attestation
 -----------------------------------------
 
 :Author:    mricon@kernel.org
-:Date:      2021-05-21
+:Date:      2021-09-10
 :Copyright: The Linux Foundation and contributors
 :License:   MIT-0
-:Version:   0.4.0
+:Version:   0.4.7
 :Manual section: 5
 
 SYNOPSIS
 --------
-patatt {sign,validate,genkey} [options]
+patatt {sign,validate,genkey,install-hook} [options]
 
 DESCRIPTION
 -----------
@@ -42,7 +42,12 @@ end.
 USING AS A GIT HOOK
 -------------------
 If you use ``git-send-email`` for sending patches, then you can get
-them automatically signed via the ``sendemail-validate`` hook::
+them automatically signed via the ``sendemail-validate`` hook. To install,
+run the following command in the repository you want enabled for signing::
+
+    $ patatt install-hook
+
+Or you can install it manually::
 
     $ echo 'patatt sign --hook "${1}"' >> .git/hooks/sendemail-validate
     $ chmod a+x .git/hooks/sendemail-validate
@@ -52,6 +57,7 @@ SUBCOMMANDS
 * *patatt sign*: sign stdin or RFC2822 files passed as arguments
 * *patatt validate*: basic validation for signed messages
 * *patatt genkey*: generate a new ed25519 keypair
+* *patatt install-hook*: install sendemail-validate hook in the current repository
 
 You can run ``patatt [subcommand] --help`` to see a summary of flags for
 each subcommand.
