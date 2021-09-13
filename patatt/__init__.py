@@ -47,7 +47,7 @@ OPT_HDRS = [b'message-id']
 KEYCACHE = dict()
 
 # My version
-__VERSION__ = '0.4.7'
+__VERSION__ = '0.4.8'
 MAX_SUPPORTED_FORMAT_VERSION = 1
 
 
@@ -1089,17 +1089,15 @@ def cmd_genkey(cmdargs, config: dict) -> None:
         logger.critical('Wrote: %s', pkey)
 
     # Also copy it into our local keyring
+    spkey = os.path.join(pdir, make_pkey_path('ed25519', config.get('identity'), identifier))
+    Path(os.path.dirname(spkey)).mkdir(parents=True, exist_ok=True)
+    with open(spkey, 'wb') as fh:
+        fh.write(base64.b64encode(newkey.verify_key.encode()))
+        logger.critical('Wrote: %s', spkey)
     dpkey = os.path.join(pdir, make_pkey_path('ed25519', config.get('identity'), 'default'))
-    Path(os.path.dirname(dpkey)).mkdir(parents=True, exist_ok=True)
     if not os.path.exists(dpkey):
-        with open(dpkey, 'wb') as fh:
-            fh.write(base64.b64encode(newkey.verify_key.encode()))
-            logger.critical('Wrote: %s', dpkey)
-    else:
-        spkey = os.path.join(pdir, make_pkey_path('ed25519', config.get('identity'), identifier))
-        with open(spkey, 'wb') as fh:
-            fh.write(base64.b64encode(newkey.verify_key.encode()))
-            logger.critical('Wrote: %s', spkey)
+        # symlink our new key to be the default
+        os.symlink(identifier, dpkey)
 
     logger.critical('Add the following to your .git/config (or global ~/.gitconfig):')
     logger.critical('---')
