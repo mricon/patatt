@@ -36,6 +36,7 @@ DEVKEY_HDR = b'X-Developer-Key'
 
 # Result and severity levels
 RES_VALID = 0
+RES_NOSIG = 4
 RES_NOKEY = 8
 RES_ERROR = 16
 RES_BADSIG = 32
@@ -919,6 +920,7 @@ def validate_message(msgdata: bytes, sources: list, trim_body: bool = False) -> 
     pm = PatattMessage(msgdata)
     if not pm.signed:
         logger.debug('message is not signed')
+        attestations.append((RES_NOSIG, None, None, None, None, ['no signatures found']))
         return attestations
 
     # Find all identities for which we have public keys
@@ -1019,6 +1021,10 @@ def cmd_validate(cmdargs, config: dict):
                         logger.info('       | key: %s', keysrc)
                     else:
                         logger.info('       | key: default GnuPG keyring')
+                elif result <= RES_NOSIG:
+                    logger.critical(' NOSIG | %s', fn)
+                    for error in errors:
+                        logger.critical('       | %s', error)
                 elif result <= RES_NOKEY:
                     logger.critical(' NOKEY | %s, %s', identity, fn)
                     for error in errors:
