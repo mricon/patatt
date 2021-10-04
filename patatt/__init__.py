@@ -1118,6 +1118,8 @@ def cmd_install_hook(cmdargs, config: dict):  # noqa
     if not gitrepo:
         logger.critical('Not in a git tree, cannot install hook')
         sys.exit(1)
+    if not os.path.exists(os.path.join(gitrepo, '.git', '.hooks')):
+        os.mkdir(hookdir)
     hookfile = os.path.join(gitrepo, '.git', 'hooks', 'sendemail-validate')
     if os.path.exists(hookfile):
         logger.critical('Hook already exists: %s', hookfile)
