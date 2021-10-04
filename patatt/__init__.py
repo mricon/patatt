@@ -811,14 +811,14 @@ def get_public_key(source: str, keytype: str, identity: str, selector: str) -> T
 
 def _load_messages(cmdargs) -> dict:
     import sys
-    if not sys.stdin.isatty():
-        messages = {'-': sys.stdin.buffer.read()}
-    elif len(cmdargs.msgfile):
+    if len(cmdargs.msgfile):
         # Load all message from the files passed to make sure they all parse correctly
         messages = dict()
         for msgfile in cmdargs.msgfile:
             with open(msgfile, 'rb') as fh:
                 messages[msgfile] = fh.read()
+    elif not sys.stdin.isatty():
+        messages = {'-': sys.stdin.buffer.read()}
     else:
         logger.critical('E: Pipe a message to sign or pass filenames with individual messages')
         raise RuntimeError('Nothing to do')
