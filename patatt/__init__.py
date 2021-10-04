@@ -1122,6 +1122,7 @@ def cmd_install_hook(cmdargs, config: dict):  # noqa
     if os.path.exists(hookfile):
         logger.critical('Hook already exists: %s', hookfile)
         sys.exit(1)
+    Path(os.path.join(gitrepo, '.git', 'hooks')).mkdir(parents=True, exist_ok=True)
     with open(hookfile, 'w') as fh:
         fh.write('#!/bin/sh\n')
         fh.write('# installed by patatt install-hook\n')
