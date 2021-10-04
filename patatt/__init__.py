@@ -47,7 +47,7 @@ OPT_HDRS = [b'message-id']
 KEYCACHE = dict()
 
 # My version
-__VERSION__ = '0.4.8'
+__VERSION__ = '0.5-dev'
 MAX_SUPPORTED_FORMAT_VERSION = 1
 
 
