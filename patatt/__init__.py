@@ -371,6 +371,7 @@ class DevsigHeader:
         signtime = ''
         signkey = ''
 
+        logger.debug('GNUPG status:\n\t%s', status.decode().strip().replace('\n', '\n\t'))
         gs_matches = re.search(rb'^\[GNUPG:] GOODSIG ([0-9A-F]+)\s+(.*)$', status, flags=re.M)
         if gs_matches:
             good = True
