@@ -489,8 +489,9 @@ class PatattMessage:
         ds.set_headers(self.canon_headers, mode='sign')
         ds.set_body(self.canon_body)
         ds.set_field('l', str(len(self.canon_body)))
-        if identity and identity != self.canon_identity:
-            ds.set_field('i', identity)
+        if not identity:
+            identity = self.canon_identity
+        ds.set_field('i', identity)
         if selector:
             ds.set_field('s', selector)
 
