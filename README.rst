@@ -67,10 +67,11 @@ Supported Signature Algorithms
 DKIM standard mostly relies on RSA signatures, though RFC 8463 extends
 it to support ED25519 keys as well. While it is possible to use any of
 the DKIM-defined algorithms, patatt only supports the following
-two signing/hashing schemes:
+signing/hashing schemes:
 
 - ed25519-sha256: exactly as defined in RFC8463
 - openpgp-sha256: uses OpenPGP to create the signature
+- openssh-sha256: uses OpenSSH signing capabilities
 
 Note: Since GnuPG supports multiple signing key algorithms,
 openpgp-sha256 signatures can be done using EDDSA keys as well. However,
@@ -78,9 +79,12 @@ since OpenPGP output includes additional headers, the "ed25519-sha256"
 and "openpgp-sha256" schemes are not interchangeable even when ed25519
 keys are used in both cases.
 
+Note: OpenSSH signature support was added in OpenSSH 8.0 and requires
+ssh-keygen that supports the -Y flag.
+
 In the future, patatt may add support for more algorithms, especially if
-that allows incorporating TPM and U2F devices (e.g. for offloading
-credential storage and crypto operations into a sandboxed environment).
+that allows incorporating more hardware crypto offload devices (such as
+TPM).
 
 X-Developer-Key header
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -129,6 +133,27 @@ example::
 
     [patatt]
         signingkey = openpgp:E63EDCA9329DD07E
+
+Using OpenSSH
+~~~~~~~~~~~~~
+If you have OpenSSH version 8.0+, then you can use your ssh keys for
+generating and verifying signatures. There are several upsides to using
+openssh as opposed to generic ed25519:
+
+- you can passphrase-protect your ssh keys
+- passphrase-protected keys will benefit from ssh-agent caching
+- you can use hardware tokens and ed25519-sk keys for higher protection
+- you are much more likely to remember to back up your ssh keys
+
+To start using openssh signatures with patatt, add the following to your
+~/.gitconfig::
+
+    [patatt]
+        signingkey = openssh:~/.ssh/my_key_id.pub
+        selector = my_key_id
+
+Note, that the person verifying openssh signatures must also run the
+version of openssh that supports this functionality.
 
 Using ed25519
 ~~~~~~~~~~~~~
@@ -192,10 +217,11 @@ Or you can do it manually::
     $ echo 'patatt sign --hook "${1}"' > "$(git rev-parse --git-dir)/hooks/sendemail-validate"
     $ chmod a+x "$(git rev-parse --git-dir)/hooks/sendemail-validate"
 
-PGP vs ed25519 keys considerations
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-If you don't already have a PGP key, you may wonder whether it makes
-sense to create a new PGP key or start using standalone ed25519 keys.
+PGP vs OpenSSH vs ed25519 keys considerations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+If you don't already have a PGP key that is used in your project, you
+may wonder whether it makes sense to create a new PGP key, reuse your
+OpenSSH key, or start using standalone ed25519 keys.
 
 Reasons to choose PGP:
 
@@ -207,6 +233,15 @@ Reasons to choose PGP:
 
 If you choose to create a new PGP key, you can use the following guide:
 https://github.com/lfit/itpol/blob/master/protecting-code-integrity.md
+
+Reasons to choose OpenSSH keys:
+
+- you can protect openssh keys with a passphrase and rely on ssh-agent
+  passphrase caching
+- you can use ssh keys with u2f hardware tokens for additional
+  protection of your private key data
+- very recent versions of git can also use ssh keys to sign tags and
+  commits
 
 Reasons to choose a standalone ed25519 key:
 
@@ -304,6 +339,11 @@ the ascii-armored public key export, for example obtained by using the
 following command::
 
     gpg -a --export --export-options export-minimal keyid
+
+For openssh keys, the key contents are a single line in the usual
+openssh pubkey format, e.g.::
+
+    ssh-ed25519 AAAAC3N... comment@or-hostname
 
 Whose keys to add to the keyring
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
