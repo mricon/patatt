@@ -28,8 +28,8 @@ from io import BytesIO
 logger = logging.getLogger(__name__)
 
 # Overridable via [patatt] parameters
-GPGBIN = 'gpg'
-SSHKBIN = 'ssh-keygen'
+GPGBIN = None
+SSHKBIN = None
 
 # Hardcoded defaults
 DEVSIG_HDR = b'X-Developer-Signature'
@@ -766,11 +766,13 @@ def get_config_from_git(regexp: str, section: Optional[str] = None, defaults: Op
 
 
 def gpg_run_command(cmdargs: list, stdin: bytes = None) -> Tuple[int, bytes, bytes]:
+    set_bin_paths(None)
     cmdargs = [GPGBIN, '--batch', '--no-auto-key-retrieve', '--no-auto-check-trustdb'] + cmdargs
     return _run_command(cmdargs, stdin)
 
 
 def sshk_run_command(cmdargs: list, stdin: bytes = None) -> Tuple[int, bytes, bytes]:
+    set_bin_paths(None)
     cmdargs = [SSHKBIN] + cmdargs
     return _run_command(cmdargs, stdin)
 
@@ -903,16 +905,27 @@ def sign_message(msgdata: bytes, algo: str, keyinfo: Union[str, bytes],
     return pm.as_bytes()
 
 
-def set_paths(config: dict) -> None:
+def set_bin_paths(config: Optional[dict]) -> None:
     global GPGBIN, SSHKBIN
-    if config.get('gpg-bin'):
-        GPGBIN = config.get('gpg-bin')
-    if config.get('ssh-keygen-bin'):
-        SSHKBIN = config.get('ssh-keygen-bin')
+    if GPGBIN is None:
+        gpgcfg = get_config_from_git(r'gpg\..*')
+        if config and config.get('gpg-bin'):
+            GPGBIN = config.get('gpg-bin')
+        elif gpgcfg.get('program'):
+            GPGBIN = gpgcfg.get('program')
+        else:
+            GPGBIN = 'gpg'
+    if SSHKBIN is None:
+        sshcfg = get_config_from_git(r'gpg\..*', section='ssh')
+        if config and config.get('ssh-keygen-bin'):
+            SSHKBIN = config.get('ssh-keygen-bin')
+        elif sshcfg.get('program'):
+            SSHKBIN = sshcfg.get('program')
+        else:
+            SSHKBIN = 'ssh-keygen'
 
 
 def cmd_sign(cmdargs, config: dict) -> None:
-    set_paths(config)
     # Do we have the signingkey defined?
     usercfg = get_config_from_git(r'user\..*')
     if not config.get('identity') and usercfg.get('email'):
@@ -1284,6 +1297,7 @@ def command() -> None:
     if 'keyringsrc' not in config:
         config['keyringsrc'] = list()
     config['keyringsrc'] += ['ref:::.keys', 'ref:::.local-keys', 'ref::refs/meta/keyring:']
+    set_bin_paths(config)
     logger.debug('config: %s', config)
 
     if 'func' not in _args:
