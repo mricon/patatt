@@ -5,10 +5,10 @@ DKIM-like cryptographic patch attestation
 -----------------------------------------
 
 :Author:    mricon@kernel.org
-:Date:      2021-09-10
+:Date:      2022-10-17
 :Copyright: The Linux Foundation and contributors
 :License:   MIT-0
-:Version:   0.4.7
+:Version:   0.5.0
 :Manual section: 5
 
 SYNOPSIS
@@ -54,10 +54,10 @@ Or you can install it manually::
 
 SUBCOMMANDS
 -----------
-* *patatt sign*: sign stdin or RFC2822 files passed as arguments
-* *patatt validate*: basic validation for signed messages
-* *patatt genkey*: generate a new ed25519 keypair
-* *patatt install-hook*: install sendemail-validate hook in the current repository
+* *sign*: sign stdin or RFC2822 files passed as arguments
+* *validate*: basic validation for signed messages
+* *genkey*: generate a new ed25519 keypair
+* *install-hook*: install sendemail-validate hook in the current repository
 
 You can run ``patatt [subcommand] --help`` to see a summary of flags for
 each subcommand.

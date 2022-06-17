@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2021 by The Linux Foundation
+# Copyright (C) 2021-2022 by The Linux Foundation
 # SPDX-License-Identifier: MIT-0
 #
 __author__ = 'Konstantin Ryabitsev <konstantin@linuxfoundation.org>'
@@ -49,7 +49,7 @@ OPT_HDRS = [b'message-id']
 KEYCACHE = dict()
 
 # My version
-__VERSION__ = '0.5-dev'
+__VERSION__ = '0.5.0'
 MAX_SUPPORTED_FORMAT_VERSION = 1
 
 

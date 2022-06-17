@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH PATATT 5 "2021-09-10" "0.4.7" ""
-.SH NAME
-PATATT \- DKIM-like cryptographic patch attestation
 .
 .nr rst2man-indent-level 0
 .
@@ -30,12 +27,15 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "PATATT" 5 "2022-10-17" "0.5.0" ""
+.SH NAME
+PATATT \- DKIM-like cryptographic patch attestation
 .SH SYNOPSIS
 .sp
 patatt {sign,validate,genkey,install\-hook} [options]
 .SH DESCRIPTION
 .sp
-This tool allows cryptographically signing patches sent via email
+This tools allows cryptographically signing patches sent via email
 by using DKIM\-like message headers. This approach is both effective and
 doesn\(aqt interfere with other code review tools the way inline or
 detached PGP signatures do. For a full overview of core concepts and
@@ -103,13 +103,13 @@ $ chmod a+x .git/hooks/sendemail\-validate
 .SH SUBCOMMANDS
 .INDENT 0.0
 .IP \(bu 2
-\fIpatatt sign\fP: sign stdin or RFC2822 files passed as arguments
+\fIsign\fP: sign stdin or RFC2822 files passed as arguments
 .IP \(bu 2
-\fIpatatt validate\fP: basic validation for signed messages
+\fIvalidate\fP: basic validation for signed messages
 .IP \(bu 2
-\fIpatatt genkey\fP: generate a new ed25519 keypair
+\fIgenkey\fP: generate a new ed25519 keypair
 .IP \(bu 2
-\fIpatatt install\-hook\fP: install sendemail\-validate hook in the current repository
+\fIinstall\-hook\fP: install sendemail\-validate hook in the current repository
 .UNINDENT
 .sp
 You can run \fBpatatt [subcommand] \-\-help\fP to see a summary of flags for
