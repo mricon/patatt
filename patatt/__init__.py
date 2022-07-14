@@ -47,9 +47,11 @@ OPT_HDRS = [b'message-id']
 
 # Quick cache for key info
 KEYCACHE = dict()
+# Quick cache for config settings
+CONFIGCACHE = dict()
 
 # My version
-__VERSION__ = '0.5.0'
+__VERSION__ = '0.6.0-dev'
 MAX_SUPPORTED_FORMAT_VERSION = 1
 
 
@@ -925,12 +927,17 @@ def set_bin_paths(config: Optional[dict]) -> None:
             SSHKBIN = 'ssh-keygen'
 
 
-def cmd_sign(cmdargs, config: dict) -> None:
+def get_algo_keydata(config: dict) -> Tuple[str, str]:
+    global KEYCACHE
     # Do we have the signingkey defined?
     usercfg = get_config_from_git(r'user\..*')
     if not config.get('identity') and usercfg.get('email'):
         # Use user.email
         config['identity'] = usercfg.get('email')
+    # Do we have this already looked up?
+    if config['identity'] in KEYCACHE:
+        return KEYCACHE[config['identity']]
+
     if not config.get('signingkey'):
         if usercfg.get('signingkey'):
             logger.info('N: Using pgp key %s defined by user.signingkey', usercfg.get('signingkey'))
@@ -939,13 +946,7 @@ def cmd_sign(cmdargs, config: dict) -> None:
         else:
             logger.critical('E: patatt.signingkey is not set')
             logger.critical('E: Perhaps you need to run genkey first?')
-            sys.exit(1)
-
-    try:
-        messages = _load_messages(cmdargs)
-    except IOError as ex:
-        logger.critical('E: %s', ex)
-        sys.exit(1)
+            raise NoKeyError('patatt.signingkey is not set')
 
     sk = config.get('signingkey')
     if sk.startswith('ed25519:'):
@@ -969,8 +970,7 @@ def cmd_sign(cmdargs, config: dict) -> None:
                         keysrc = skey
 
         if not keysrc:
-            logger.critical('E: Could not find the key matching %s', identifier)
-            sys.exit(1)
+            raise ConfigurationError('Could not find the key matching %s' % identifier)
 
         logger.info('N: Using ed25519 key: %s', keysrc)
         with open(keysrc, 'r') as fh:
@@ -984,21 +984,61 @@ def cmd_sign(cmdargs, config: dict) -> None:
         keydata = sk[8:]
     else:
         logger.critical('E: Unknown key type: %s', sk)
+        raise ConfigurationError('Unknown key type: %s' % sk)
+
+    KEYCACHE[config['identity']] = (algo, keydata)
+    return algo, keydata
+
+
+def rfc2822_sign(message: bytes, config: Optional[dict] = None) -> bytes:
+    if config is None:
+        config = get_main_config()
+    algo, keydata = get_algo_keydata(config)
+    pm = PatattMessage(message)
+    pm.sign(algo, keydata, identity=config.get('identity'), selector=config.get('selector'))
+    logger.debug('--- SIGNED MESSAGE STARTS ---')
+    logger.debug(pm.as_string())
+    return pm.as_bytes()
+
+
+def get_main_config(section: Optional[str] = None) -> dict:
+    global CONFIGCACHE
+    if section in CONFIGCACHE:
+        return CONFIGCACHE[section]
+    config = get_config_from_git(r'patatt\..*', section=section, multivals=['keyringsrc'])
+    # Append some extra keyring locations
+    if 'keyringsrc' not in config:
+        config['keyringsrc'] = list()
+    config['keyringsrc'] += ['ref:::.keys', 'ref:::.local-keys', 'ref::refs/meta/keyring:']
+    set_bin_paths(config)
+    logger.debug('config: %s', config)
+    CONFIGCACHE[section] = config
+    return config
+
+
+def cmd_sign(cmdargs, config: dict) -> None:
+    try:
+        messages = _load_messages(cmdargs)
+    except IOError as ex:
+        logger.critical('E: %s', ex)
         sys.exit(1)
 
     for fn, msgdata in messages.items():
         try:
-            pm = PatattMessage(msgdata)
-            pm.sign(algo, keydata, identity=config.get('identity'), selector=config.get('selector'))
+            signed = rfc2822_sign(msgdata, config)
             logger.debug('--- SIGNED MESSAGE STARTS ---')
-            logger.debug(pm.as_string())
+            logger.debug(signed.decode())
             if fn == '-':
-                sys.stdout.buffer.write(pm.as_bytes())
+                sys.stdout.buffer.write(signed)
             else:
                 with open(fn, 'wb') as fh:
-                    fh.write(pm.as_bytes())
+                    fh.write(signed)
 
                 logger.critical('SIGN | %s', os.path.basename(fn))
+
+        except (ConfigurationError, NoKeyError) as ex:
+            logger.debug('Exiting due to %s', ex)
+            sys.exit(1)
 
         except SigningError as ex:
             logger.critical('E: %s', ex)
@@ -1292,13 +1332,7 @@ def command() -> None:
         ch.setLevel(logging.CRITICAL)
 
     logger.addHandler(ch)
-    config = get_config_from_git(r'patatt\..*', section=_args.section, multivals=['keyringsrc'])
-    # Append some extra keyring locations
-    if 'keyringsrc' not in config:
-        config['keyringsrc'] = list()
-    config['keyringsrc'] += ['ref:::.keys', 'ref:::.local-keys', 'ref::refs/meta/keyring:']
-    set_bin_paths(config)
-    logger.debug('config: %s', config)
+    config = get_main_config(section=_args.section)
 
     if 'func' not in _args:
         parser.print_help()
