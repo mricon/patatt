@@ -678,7 +678,9 @@ class PatattMessage:
             mf = os.path.join(td, 'm')
             pf = os.path.join(td, 'p')
             cmdargs = ['git', 'mailinfo', '--encoding=utf-8', '--no-scissors', mf, pf]
-            ecode, i, err = _run_command(cmdargs, stdin=payload)
+            # normalize line endings in payload to single lf for consistent results
+            # from git-mailinfo.
+            ecode, i, err = _run_command(cmdargs, stdin=payload.replace(b'\r\n', b'\n'))
             if ecode > 0:
                 logger.debug('FAILED  : Failed running git-mailinfo:')
                 logger.debug(err.decode())
