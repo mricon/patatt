@@ -339,7 +339,7 @@ class DevsigHeader:
 
     @staticmethod
     def _validate_openssh(sigdata: bytes, payload: bytes, keydata: bytes) -> None:
-        with tempfile.TemporaryDirectory(suffix='.patch-attest-poc') as td:
+        with tempfile.TemporaryDirectory(suffix='.patatt.ssh') as td:
             # Start by making a signers file
             fpath = os.path.join(td, 'signers')
             spath = os.path.join(td, 'sigdata')
@@ -394,11 +394,12 @@ class DevsigHeader:
         bsigdata = base64.b64decode(sigdata)
         vrfyargs = ['--verify', '--output', '-', '--status-fd=2']
         if pubkey:
-            with tempfile.NamedTemporaryFile(suffix='.patatt.gpg') as temp_keyring:
-                keyringargs = ['--no-default-keyring', f'--keyring={temp_keyring.name}']
+            with tempfile.TemporaryDirectory(suffix='.patatt.gnupg') as td:
+                keyringargs = ['--homedir', td, '--no-default-keyring', '--keyring', 'pub']
                 if pubkey in KEYCACHE:
                     logger.debug('Reusing cached keyring')
-                    temp_keyring.write(KEYCACHE[pubkey])
+                    with open(os.path.join(td, 'pub'), 'wb') as kfh:
+                        kfh.write(KEYCACHE[pubkey])
                 else:
                     logger.debug('Importing into new keyring')
                     gpgargs = keyringargs + ['--status-fd=1', '--import']
@@ -406,7 +407,8 @@ class DevsigHeader:
                     # look for IMPORT_OK
                     if out.find(b'[GNUPG:] IMPORT_OK') < 0:
                         raise ValidationError('Could not import GnuPG public key')
-                    KEYCACHE[pubkey] = temp_keyring.read()
+                    with open(os.path.join(td, 'pub'), 'rb') as kfh:
+                        KEYCACHE[pubkey] = kfh.read()
                 gpgargs = keyringargs + vrfyargs
                 ecode, out, err = gpg_run_command(gpgargs, stdin=bsigdata)
 
