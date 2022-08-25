@@ -394,7 +394,7 @@ class DevsigHeader:
         bsigdata = base64.b64decode(sigdata)
         vrfyargs = ['--verify', '--output', '-', '--status-fd=2']
         if pubkey:
-            with tempfile.TemporaryFile(suffix='.patch-attest-poc') as temp_keyring:
+            with tempfile.NamedTemporaryFile(suffix='.patatt.gpg') as temp_keyring:
                 keyringargs = ['--no-default-keyring', f'--keyring={temp_keyring.name}']
                 if pubkey in KEYCACHE:
                     logger.debug('Reusing cached keyring')
