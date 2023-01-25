@@ -451,7 +451,7 @@ class DevsigHeader:
         return good, valid, trusted, signkey, signtime
 
     @staticmethod
-    def splitter(longstr: bytes, limit: int = 78) -> bytes:
+    def splitter(longstr: bytes, limit: int = 75) -> bytes:
         splitstr = list()
         first = True
         while len(longstr) > limit:
