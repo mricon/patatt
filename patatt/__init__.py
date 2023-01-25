@@ -51,7 +51,7 @@ KEYCACHE = dict()
 CONFIGCACHE = dict()
 
 # My version
-__VERSION__ = '0.6.2'
+__VERSION__ = '0.6.3'
 MAX_SUPPORTED_FORMAT_VERSION = 1
 
 
