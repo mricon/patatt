@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+if grep -q "^GIT: " "${1}"; then
+    # This is a cover letter template that will be modified by git-send-email.
+    # Refuse to sign it, as it's obviously going to be different at send time.
+    exit 0
+fi
+
 if which patatt>/dev/null 2>&1; then
     # We have it in path, so just execute it
     patatt sign --hook "${1}"

@@ -1272,6 +1272,7 @@ def cmd_install_hook(cmdargs, config: dict):  # noqa
     with open(hookfile, 'w') as fh:
         fh.write('#!/bin/sh\n')
         fh.write('# installed by patatt install-hook\n')
+        fh.write('grep -q "^GIT: " "${1}" && exit 0\n')
         fh.write('patatt sign --hook "${1}"\n')
         os.chmod(hookfile, 0o755)
     logger.critical('Hook installed as %s', hookfile)
