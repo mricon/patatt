@@ -54,34 +54,36 @@ CONFIGCACHE = dict()
 __VERSION__ = '0.7.0-dev'
 MAX_SUPPORTED_FORMAT_VERSION = 1
 
-
-class SigningError(Exception):
-    def __init__(self, message: str, errors: Optional[list] = None):
+class Error(Exception):
+    def __init__(self, message: str, errors: Optional[list[str]] = None):
         super().__init__(message)
         self.errors = errors
 
+    def __str__(self) -> str:
+        s = super().__str__()
+        if self.errors:
+            s = '%s: (%s)' % (s, ', '.join(self.errors))
+        return s
 
-class ConfigurationError(Exception):
-    def __init__(self, message: str, errors: Optional[list] = None):
-        super().__init__(message)
-        self.errors = errors
+
+class SigningError(Error):
+    ...
 
 
-class ValidationError(Exception):
-    def __init__(self, message: str, errors: Optional[list] = None):
-        super().__init__(message)
-        self.errors = errors
+class ConfigurationError(Error):
+    ...
+
+
+class ValidationError(Error):
+    ...
 
 
 class NoKeyError(ValidationError):
-    def __init__(self, message: str, errors: Optional[list] = None):
-        super().__init__(message)
-        self.errors = errors
+    ...
 
 
 class BodyValidationError(ValidationError):
-    def __init__(self, message: str, errors: Optional[list] = None):
-        super().__init__(message, errors)
+    ...
 
 
 class DevsigHeader:
@@ -316,7 +318,7 @@ class DevsigHeader:
         sshkargs = ['-Y', 'sign', '-n', 'patatt', '-f', keypath]
         ecode, out, err = sshk_run_command(sshkargs, payload)
         if ecode > 0:
-            raise SigningError('Running ssh-keygen failed', errors=err.decode().split('\n'))
+            raise SigningError('Running ssh-keygen failed', errors=err.decode().strip().split('\n'))
         # Remove the header/footer
         sigdata = b''
         for bline in out.split(b'\n'):
@@ -705,15 +707,15 @@ def get_data_dir():
     return datadir
 
 
-def _run_command(cmdargs: list, stdin: bytes = None, env: Optional[dict] = None) -> Tuple[int, bytes, bytes]:
-    sp = subprocess.Popen(cmdargs, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+def _run_command(cmdargs: list[str], stdin: Optional[bytes] = None, env: Optional[dict[str, str]] = None) -> Tuple[int, bytes, bytes]:
     logger.debug('Running %s', ' '.join(cmdargs))
-    (output, error) = sp.communicate(input=stdin)
-    return sp.returncode, output, error
+    cp = subprocess.run(cmdargs, input=stdin, env=env, capture_output=True, text=False)
+    logger.debug('Completed %s', repr(cp))
+    return cp.returncode, cp.stdout, cp.stderr
 
 
-def git_run_command(gitdir: Optional[str], args: list, stdin: Optional[bytes] = None,
-                    env: Optional[dict] = None) -> Tuple[int, bytes, bytes]:
+def git_run_command(gitdir: Optional[str], args: list[str], stdin: Optional[bytes] = None,
+                    env: Optional[dict[str, str]] = None) -> Tuple[int, bytes, bytes]:
     if gitdir:
         args = ['git', '--git-dir', gitdir, '--no-pager'] + args
     else:
@@ -771,15 +773,15 @@ def get_config_from_git(regexp: str, section: Optional[str] = None, defaults: Op
     return gitconfig
 
 
-def gpg_run_command(cmdargs: list, stdin: bytes = None) -> Tuple[int, bytes, bytes]:
-    set_bin_paths(None)
-    cmdargs = [GPGBIN, '--batch', '--no-auto-key-retrieve', '--no-auto-check-trustdb'] + cmdargs
+def gpg_run_command(cmdargs: list[str], stdin: Optional[bytes] = None) -> Tuple[int, bytes, bytes]:
+    gpgbin, _ = set_bin_paths(None)
+    cmdargs = [gpgbin, '--batch', '--no-auto-key-retrieve', '--no-auto-check-trustdb'] + cmdargs
     return _run_command(cmdargs, stdin)
 
 
-def sshk_run_command(cmdargs: list, stdin: bytes = None) -> Tuple[int, bytes, bytes]:
-    set_bin_paths(None)
-    cmdargs = [SSHKBIN] + cmdargs
+def sshk_run_command(cmdargs: list[str], stdin: Optional[bytes] = None) -> Tuple[int, bytes, bytes]:
+    _, sshkbin = set_bin_paths(None)
+    cmdargs = [sshkbin] + cmdargs
     return _run_command(cmdargs, stdin)
 
 
@@ -911,7 +913,7 @@ def sign_message(msgdata: bytes, algo: str, keyinfo: Union[str, bytes],
     return pm.as_bytes()
 
 
-def set_bin_paths(config: Optional[dict]) -> None:
+def set_bin_paths(config: Optional[dict]) -> Tuple[str, str]:
     global GPGBIN, SSHKBIN
     if GPGBIN is None:
         gpgcfg = get_config_from_git(r'gpg\..*')
@@ -929,6 +931,7 @@ def set_bin_paths(config: Optional[dict]) -> None:
             SSHKBIN = sshcfg.get('program')
         else:
             SSHKBIN = 'ssh-keygen'
+    return GPGBIN, SSHKBIN
 
 
 def get_algo_keydata(config: dict) -> Tuple[str, str]:
