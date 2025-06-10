@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "patatt"
+dynamic = ["version"]
+description = "A simple library to add cryptographic attestation to patches sent via email"
+authors = [
+    {name = "Konstantin Ryabitsev", email = "mricon@kernel.org"},
+]
+license = {file = "COPYING"}
+readme = "README.rst"
+requires-python = ">=3.8"
+keywords = ["git", "patches", "attestation", "email", "workflow"]
+classifiers = [
+    "Intended Auidience :: Developers",
+    "License :: OSI Approved :: MIT No Attribution License (MIT-0)",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Communications :: Email",
+    "Topic :: Software Development",
+]
+
+dependencies = [
+    "pynacl>=1.5,<2.0",
+]
+
+[dependency-groups]
+dev = [
+    "mypy",
+    "pip-tools",
+    "pytest",
+    "ruff",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pip-tools]
+generate_hashes = true
+
+[project.urls]
+Homepage = "https://git.kernel.org/pub/scm/utils/patatt/patatt.git/about/"
+Repository = "https://git.kernel.org/pub/scm/utils/patatt/patatt.git"
+
+[project.scripts]
+patatt = "patatt:command"
+
+[tool.setuptools.dynamic]
+version = {attr = "patatt.__VERSION__"}
+
+[tool.setuptools.data-files]
+"share/man/man5" = ["man/patatt.5"]
+
+[tool.ruff.lint]
+select = [
+    "PGH004", # https://docs.astral.sh/ruff/rules/blanket-noqa/
+]
+flake8-quotes.inline-quotes = "single"
+
+[tool.pyright]
+typeCheckingMode = "off"
+
+# Configure mypy in strict mode
+[tool.mypy]
+strict = true
