@@ -151,7 +151,7 @@ class DevsigHeader:
             if maxlen < len(body):
                 body = body[:maxlen]
 
-            self.hdata['l'] = bytes(len(body))
+            self.hdata['l'] = str(len(body)).encode()
 
         hashed = hashlib.sha256()
         hashed.update(body)
