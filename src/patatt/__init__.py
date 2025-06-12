@@ -861,18 +861,14 @@ def get_config_from_git(regexp: str,
 
 
 def gpg_run_command(cmdargs: List[str], stdin: Optional[bytes] = None) -> Tuple[int, bytes, bytes]:
-    set_bin_paths(None)
-    if GPGBIN is None:
-        raise RuntimeError('GPG binary not set, cannot run gpg commands')
-    cmdargs = [GPGBIN, '--batch', '--no-auto-key-retrieve', '--no-auto-check-trustdb'] + cmdargs
+    gpgbin, _ = set_bin_paths(None)
+    cmdargs = [gpgbin, '--batch', '--no-auto-key-retrieve', '--no-auto-check-trustdb'] + cmdargs
     return _run_command(cmdargs, stdin)
 
 
 def sshk_run_command(cmdargs: List[str], stdin: Optional[bytes] = None) -> Tuple[int, bytes, bytes]:
-    set_bin_paths(None)
-    if SSHKBIN is None:
-        raise RuntimeError('SSH keygen binary not set, cannot run ssh-keygen commands')
-    cmdargs = [SSHKBIN] + cmdargs
+    _, sshkbin = set_bin_paths(None)
+    cmdargs = [sshkbin] + cmdargs
     return _run_command(cmdargs, stdin)
 
 
@@ -1007,7 +1003,7 @@ def sign_message(msgdata: bytes,
     return pm.as_bytes()
 
 
-def set_bin_paths(config: Optional[GitConfigType]) -> None:
+def set_bin_paths(config: Optional[GitConfigType]) -> Tuple[str, str]:
     global GPGBIN, SSHKBIN
     if GPGBIN is None:
         if config and config.get('gpg-bin'):
@@ -1029,6 +1025,7 @@ def set_bin_paths(config: Optional[GitConfigType]) -> None:
             SSHKBIN = _sshkbin
         else:
             SSHKBIN = 'ssh-keygen'
+    return GPGBIN, SSHKBIN
 
 
 def get_algo_keydata(config: GitConfigType) -> Tuple[str, str]:
