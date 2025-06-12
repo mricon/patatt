@@ -1010,25 +1010,21 @@ def sign_message(msgdata: bytes,
 def set_bin_paths(config: Optional[GitConfigType]) -> None:
     global GPGBIN, SSHKBIN
     if GPGBIN is None:
-        gpgcfg = get_config_from_git(r'gpg\..*')
         if config and config.get('gpg-bin'):
             _gpgbin = config.get('gpg-bin')
             assert isinstance(GPGBIN, str), 'gpg-bin must be a string'
             GPGBIN = _gpgbin
-        elif gpgcfg.get('program'):
-            _gpgbin = gpgcfg.get('program')
+        elif (_gpgbin := get_config_from_git(r'gpg\..*').get('program')) is not None:
             assert isinstance(_gpgbin, str), 'gpg program must be a string'
             GPGBIN = _gpgbin
         else:
             GPGBIN = 'gpg'
     if SSHKBIN is None:
-        sshcfg = get_config_from_git(r'gpg\..*', section='ssh')
         if config and config.get('ssh-keygen-bin'):
             _sshkbin = config.get('ssh-keygen-bin')
             assert isinstance(_sshkbin, str), 'ssh-keygen-bin must be a string'
             SSHKBIN = _sshkbin
-        elif sshcfg.get('program'):
-            _sshkbin = sshcfg.get('program')
+        elif (_sshkbin := get_config_from_git(r'gpg\..*', section='ssh').get('program')) is not None:
             assert isinstance(_sshkbin, str), 'program must be a string'
             SSHKBIN = _sshkbin
         else:
