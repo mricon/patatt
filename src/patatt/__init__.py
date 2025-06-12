@@ -30,7 +30,7 @@ from warnings import deprecated
 
 type GitConfigType = Dict[str, Union[str, List[str]]]
 
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
 
 # Overridable via [patatt] parameters
 GPGBIN: Optional[str] = None
@@ -47,8 +47,8 @@ RES_NOKEY = 8
 RES_ERROR = 16
 RES_BADSIG = 32
 
-REQ_HDRS = [b'from', b'subject']
-OPT_HDRS = [b'message-id']
+REQ_HDRS: List[bytes] = [b'from', b'subject']
+OPT_HDRS: List[bytes] = [b'message-id']
 
 # Quick cache for key info
 KEYCACHE: Dict[Union[str, bytes], Any] = dict()
@@ -60,6 +60,8 @@ __VERSION__ = '0.7.0-dev'
 MAX_SUPPORTED_FORMAT_VERSION = 1
 
 class Error(Exception):
+    errors: Optional[List[str]]
+
     def __init__(self, message: str, errors: Optional[List[str]] = None):
         super().__init__(message)
         self.errors = errors
