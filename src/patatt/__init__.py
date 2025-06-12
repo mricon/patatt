@@ -59,34 +59,36 @@ CONFIGCACHE: Dict[str, GitConfigType] = dict()
 __VERSION__ = '0.7.0-dev'
 MAX_SUPPORTED_FORMAT_VERSION = 1
 
-
-class SigningError(Exception):
+class Error(Exception):
     def __init__(self, message: str, errors: Optional[List[str]] = None):
         super().__init__(message)
         self.errors = errors
 
+    def __str__(self) -> str:
+        s = super().__str__()
+        if self.errors:
+            s = '%s: (%s)' % (s, ', '.join(self.errors))
+        return s
 
-class ConfigurationError(Exception):
-    def __init__(self, message: str, errors: Optional[List[str]] = None):
-        super().__init__(message)
-        self.errors = errors
+
+class SigningError(Error):
+    ...
 
 
-class ValidationError(Exception):
-    def __init__(self, message: str, errors: Optional[List[str]] = None):
-        super().__init__(message)
-        self.errors = errors
+class ConfigurationError(Error):
+    ...
+
+
+class ValidationError(Error):
+    ...
 
 
 class NoKeyError(ValidationError):
-    def __init__(self, message: str, errors: Optional[List[str]] = None):
-        super().__init__(message)
-        self.errors = errors
+    ...
 
 
 class BodyValidationError(ValidationError):
-    def __init__(self, message: str, errors: Optional[List[str]] = None):
-        super().__init__(message, errors)
+    ...
 
 
 class DevsigHeader:
@@ -370,7 +372,7 @@ class DevsigHeader:
         sshkargs = ['-Y', 'sign', '-n', 'patatt', '-f', keypath]
         ecode, out, err = sshk_run_command(sshkargs, payload)
         if ecode > 0:
-            raise SigningError('Running ssh-keygen failed', errors=err.decode().split('\n'))
+            raise SigningError('Running ssh-keygen failed', errors=err.decode().strip().split('\n'))
         # Remove the header/footer
         sigdata = b''
         for bline in out.split(b'\n'):
