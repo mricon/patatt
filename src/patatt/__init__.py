@@ -786,10 +786,10 @@ def get_data_dir() -> str:
 def _run_command(cmdargs: List[str],
                  stdin: Optional[bytes] = None,
                  env: Optional[Dict[str, str]] = None) -> Tuple[int, bytes, bytes]:
-    sp = subprocess.Popen(cmdargs, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
     logger.debug('Running %s', ' '.join(cmdargs))
-    (output, error) = sp.communicate(input=stdin)
-    return sp.returncode, output, error
+    cp = subprocess.run(cmdargs, input=stdin, env=env, capture_output=True, text=False)
+    logger.debug('Completed %s', repr(cp))
+    return cp.returncode, cp.stdout, cp.stderr
 
 
 def git_run_command(gitdir: Optional[str],
