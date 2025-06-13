@@ -248,9 +248,19 @@ class DevsigHeader:
         if not algo:
             raise ValidationError('Missing "a=" field in signature header')
 
-        skeyinfo: str
         signtime: str
+        if algo.startswith('openpgp'):
+            pubkey: Optional[bytes] = None
+            if isinstance(keyinfo, str):
+                pubkey = keyinfo.encode()
+            else:
+                pubkey = keyinfo
+            sdigest, (_, _, _, signkey, signtime) = DevsigHeader._validate_openpgp(bdata, pubkey)
+            if sdigest != vdigest:
+                raise ValidationError('Header validation failed')
+            return signkey, signtime
 
+        skeyinfo: str
         if isinstance(keyinfo, bytes):
             bkeyinfo = keyinfo
             skeyinfo = keyinfo.decode()
@@ -258,6 +268,7 @@ class DevsigHeader:
             skeyinfo = keyinfo
             bkeyinfo = keyinfo.encode()
         else:
+            # This cannot be None for any of the algorithms we support other than openpgp, done above
             raise RuntimeError('keyinfo must be a string or bytes, not %s' % type(keyinfo).__name__)
 
         if algo.startswith('ed25519'):
@@ -276,10 +287,6 @@ class DevsigHeader:
             if not _st:
                 raise ValidationError('t= field is required for openssh sigs')
             signtime = _st
-        elif algo.startswith('openpgp'):
-            sdigest, (_, _, _, signkey, signtime) = DevsigHeader._validate_openpgp(bdata, bkeyinfo)
-            if sdigest != vdigest:
-                raise ValidationError('Header validation failed')
         else:
             raise ValidationError('Unknown algorithm: %s' % algo)
 
