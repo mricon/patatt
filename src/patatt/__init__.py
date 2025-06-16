@@ -28,7 +28,7 @@ from io import BytesIO
 
 from warnings import deprecated
 
-type GitConfigType = Dict[str, Union[str, List[str]]]
+GitConfigType = Dict[str, Union[str, List[str]]]
 
 logger: logging.Logger = logging.getLogger(__name__)
 
