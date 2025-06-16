@@ -17,6 +17,7 @@ import logging
 import tempfile
 import time
 import datetime
+import warnings
 
 import urllib.parse
 import email.utils
@@ -25,8 +26,6 @@ import email.header
 from pathlib import Path
 from typing import Optional, List, Tuple, Dict, Union, Any
 from io import BytesIO
-
-from warnings import deprecated
 
 GitConfigType = Dict[str, Union[str, List[str]]]
 
@@ -132,8 +131,9 @@ class DevsigHeader:
             return value.decode()
         return value
 
-    @deprecated('Use get_field_as_bytes() or get_field_as_str() instead')
     def get_field(self, field: str, decode: bool = False) -> Union[None, str, bytes]:
+        warnings.warn('get_field() is deprecated, use get_field_as_bytes() or get_field_as_str() instead',
+                      DeprecationWarning, stacklevel=2)
         value = self.hdata.get(field)
         if isinstance(value, bytes) and decode:
             return value.decode()
