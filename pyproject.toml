@@ -14,7 +14,7 @@ readme = "README.rst"
 requires-python = ">=3.8"
 keywords = ["git", "patches", "attestation", "email", "workflow"]
 classifiers = [
-    "Intended Auidience :: Developers",
+    "Intended Audience :: Developers",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Communications :: Email",
     "Topic :: Software Development",
