@@ -9,13 +9,12 @@ description = "A simple library to add cryptographic attestation to patches sent
 authors = [
     {name = "Konstantin Ryabitsev", email = "mricon@kernel.org"},
 ]
-license = {file = "COPYING"}
+license = "MIT-0"
 readme = "README.rst"
 requires-python = ">=3.8"
 keywords = ["git", "patches", "attestation", "email", "workflow"]
 classifiers = [
     "Intended Auidience :: Developers",
-    "License :: OSI Approved :: MIT No Attribution License (MIT-0)",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Communications :: Email",
     "Topic :: Software Development",
