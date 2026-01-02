@@ -782,13 +782,13 @@ class PatattMessage:
             return m, p, i
 
 
-def get_data_dir() -> str:
+def get_data_dir() -> Path:
     if 'XDG_DATA_HOME' in os.environ:
-        datahome = os.environ['XDG_DATA_HOME']
+        datahome = Path(os.environ['XDG_DATA_HOME'])
     else:
-        datahome = os.path.join(str(Path.home()), '.local', 'share')
-    datadir = os.path.join(datahome, 'patatt')
-    Path(datadir).mkdir(parents=True, exist_ok=True)
+        datahome = Path.home() / '.local' / 'share'
+    datadir = datahome / 'patatt'
+    datadir.mkdir(parents=True, exist_ok=True)
     return datadir
 
 
@@ -892,7 +892,7 @@ def get_git_toplevel(gitdir: Optional[str] = None) -> str:
     return ''
 
 
-def make_pkey_path(keytype: str, identity: str, selector: str) -> str:
+def make_pkey_path(keytype: str, identity: str, selector: str) -> Path:
     chunks = identity.split('@', 1)
     if len(chunks) != 2:
         raise ValidationError('identity must include both local and domain parts')
@@ -900,10 +900,16 @@ def make_pkey_path(keytype: str, identity: str, selector: str) -> str:
     domain = chunks[1].lower()
     selector = selector.lower()
     # urlencode all potentially untrusted bits to make sure nobody tries path-based badness
-    keypath = os.path.join(urllib.parse.quote_plus(keytype), urllib.parse.quote_plus(domain),
-                           urllib.parse.quote_plus(local), urllib.parse.quote_plus(selector))
+    return Path(urllib.parse.quote_plus(keytype), urllib.parse.quote_plus(domain),
+                urllib.parse.quote_plus(local), urllib.parse.quote_plus(selector))
 
-    return keypath
+
+def make_byhash_path(keytype: str, identity: str, selector: str) -> Path:
+    keypath = make_pkey_path(keytype, identity, selector)
+    hash_digest = hashlib.sha256(str(keypath).encode('utf-8')).hexdigest()
+    prefix = hash_digest[:2]
+    remainder = hash_digest[2:]
+    return Path('by-hash', prefix, remainder)
 
 
 def get_public_key(source: str, keytype: str, identity: str, selector: str) -> Tuple[bytes, str]:
@@ -963,24 +969,49 @@ def get_public_key(source: str, keytype: str, identity: str, selector: str) -> T
             return out, 'ref:%s:%s' % (gittop, keysrc)
 
         # Does it exist on disk but hasn't been committed yet?
-        fullpath = os.path.join(gitrepo, subpath)
-        if os.path.exists(fullpath):
+        fullpath = Path(gitrepo) / subpath
+        if fullpath.exists():
             with open(fullpath, 'rb') as fh:
                 logger.debug('KEYSRC  : %s', fullpath)
-                return fh.read(), fullpath
+                return fh.read(), str(fullpath)
+
+        # Try by-hash lookup
+        byhash_keypath = make_byhash_path(keytype, identity, selector)
+        byhash_subpath = Path(gitsub) / byhash_keypath
+        keysrc = f'{gitref}:{byhash_subpath}'
+        cmdargs = ['show', keysrc]
+        ecode, out, err = git_run_command(gittop, cmdargs)
+        if ecode == 0:
+            logger.debug('KEYSRC  : %s (by-hash)', keysrc)
+            return out, 'ref:%s:%s' % (gittop, keysrc)
+
+        # Check disk for by-hash path
+        fullpath = Path(gitrepo) / byhash_subpath
+        if fullpath.exists():
+            with open(fullpath, 'rb') as fh:
+                logger.debug('KEYSRC  : %s (by-hash)', fullpath)
+                return fh.read(), str(fullpath)
 
         raise KeyError('Could not find %s in %s:%s' % (subpath, gittop, gitref))
 
     # It's a disk path, then
     # Expand ~ and env vars
-    source = os.path.expanduser(source)
-    if source.find('$') >= 0:
-        source = os.path.expandvars(source)
-    fullpath = os.path.join(source, keypath)
-    if os.path.exists(fullpath):
+    source_path = Path(source).expanduser()
+    if '$' in source:
+        source_path = Path(os.path.expandvars(source))
+    fullpath = source_path / keypath
+    if fullpath.exists():
         with open(fullpath, 'rb') as fh:
             logger.debug('Loaded key from %s', fullpath)
-            return fh.read(), fullpath
+            return fh.read(), str(fullpath)
+
+    # Try by-hash lookup
+    byhash_keypath = make_byhash_path(keytype, identity, selector)
+    byhash_fullpath = source_path / byhash_keypath
+    if byhash_fullpath.exists():
+        with open(byhash_fullpath, 'rb') as fh:
+            logger.debug('Loaded key from %s (by-hash)', byhash_fullpath)
+            return fh.read(), str(byhash_fullpath)
 
     raise KeyError('Could not find %s' % fullpath)
 
@@ -1070,21 +1101,21 @@ def get_algo_keydata(config: GitConfigType) -> Tuple[str, str]:
         algo = 'ed25519'
         identifier = sk[8:]
         keysrc = None
-        if identifier.startswith('/') and os.path.exists(identifier):
+        if identifier.startswith('/') and Path(identifier).exists():
             keysrc = identifier
         else:
             # datadir/private/%s.key
             ddir = get_data_dir()
-            skey = os.path.join(ddir, 'private', '%s.key' % identifier)
-            if os.path.exists(skey):
-                keysrc = skey
+            skey = ddir / 'private' / f'{identifier}.key'
+            if skey.exists():
+                keysrc = str(skey)
             else:
                 # finally, try .git/%s.key
                 gtdir = get_git_toplevel()
                 if gtdir:
-                    skey = os.path.join(gtdir, '.git', '%s.key' % identifier)
-                    if os.path.exists(skey):
-                        keysrc = skey
+                    skey = Path(gtdir) / '.git' / f'{identifier}.key'
+                    if skey.exists():
+                        keysrc = str(skey)
 
         if not keysrc:
             raise ConfigurationError('Could not find the key matching %s' % identifier)
@@ -1270,13 +1301,13 @@ def cmd_validate(cmdargs: argparse.Namespace, config: GitConfigType) -> None:
             sys.exit(1)
 
     ddir = get_data_dir()
-    pdir = os.path.join(ddir, 'public')
+    pdir = ddir / 'public'
     sources = config.get('keyringsrc', list())
     if not isinstance(sources, list):
         sources = [sources]
 
-    if pdir not in sources:
-        sources.append(pdir)
+    if str(pdir) not in sources:
+        sources.append(str(pdir))
 
     if config.get('trimbody', 'no') == 'yes':
         trim_body = True
@@ -1343,16 +1374,16 @@ def cmd_genkey(cmdargs: argparse.Namespace, config: GitConfigType) -> None:
         identifier = datetime.datetime.today().strftime('%Y%m%d')
 
     ddir = get_data_dir()
-    sdir = os.path.join(ddir, 'private')
-    pdir = os.path.join(ddir, 'public')
-    if not os.path.exists(sdir):
-        os.mkdir(sdir, mode=0o0700)
-    if not os.path.exists(pdir):
-        os.mkdir(pdir, mode=0o0755)
-    skey = os.path.join(sdir, '%s.key' % identifier)
-    pkey = os.path.join(pdir, '%s.pub' % identifier)
+    sdir = ddir / 'private'
+    pdir = ddir / 'public'
+    if not sdir.exists():
+        sdir.mkdir(mode=0o0700)
+    if not pdir.exists():
+        pdir.mkdir(mode=0o0755)
+    skey = sdir / f'{identifier}.key'
+    pkey = pdir / f'{identifier}.pub'
     # Do we have a key with this identifier already present?
-    if os.path.exists(skey) and not cmdargs.force:
+    if skey.exists() and not cmdargs.force:
         logger.critical('Key already exists: %s', skey)
         logger.critical('Use a different -n or pass -f to overwrite it')
         raise RuntimeError('Key already exists')
@@ -1373,15 +1404,15 @@ def cmd_genkey(cmdargs: argparse.Namespace, config: GitConfigType) -> None:
         logger.critical('Wrote: %s', pkey)
 
     # Also copy it into our local keyring
-    spkey = os.path.join(pdir, make_pkey_path('ed25519', identity, identifier))
-    Path(os.path.dirname(spkey)).mkdir(parents=True, exist_ok=True)
+    spkey = pdir / make_pkey_path('ed25519', identity, identifier)
+    spkey.parent.mkdir(parents=True, exist_ok=True)
     with open(spkey, 'wb') as fh:
         fh.write(base64.b64encode(newkey.verify_key.encode()))
         logger.critical('Wrote: %s', spkey)
-    dpkey = os.path.join(pdir, make_pkey_path('ed25519', identity, 'default'))
-    if not os.path.exists(dpkey):
+    dpkey = pdir / make_pkey_path('ed25519', identity, 'default')
+    if not dpkey.exists():
         # symlink our new key to be the default
-        os.symlink(identifier, dpkey)
+        dpkey.symlink_to(identifier)
 
     logger.critical('Add the following to your .git/config (or global ~/.gitconfig):')
     logger.critical('---')
@@ -1402,17 +1433,17 @@ def cmd_install_hook(cmdargs: argparse.Namespace, config: GitConfigType) -> None
     if not gitrepo:
         logger.critical('Not in a git tree, cannot install hook')
         sys.exit(1)
-    hookfile = os.path.join(gitrepo, '.git', 'hooks', 'sendemail-validate')
-    if os.path.exists(hookfile):
+    hookfile = Path(gitrepo) / '.git' / 'hooks' / 'sendemail-validate'
+    if hookfile.exists():
         logger.critical('Hook already exists: %s', hookfile)
         sys.exit(1)
-    Path(os.path.join(gitrepo, '.git', 'hooks')).mkdir(parents=True, exist_ok=True)
+    hookfile.parent.mkdir(parents=True, exist_ok=True)
     with open(hookfile, 'w') as fh:
         fh.write('#!/bin/sh\n')
         fh.write('# installed by patatt install-hook\n')
         fh.write('grep -q "^GIT: " "${1}" && exit 0\n')
         fh.write('patatt sign --hook "${1}"\n')
-        os.chmod(hookfile, 0o755)
+        hookfile.chmod(0o755)
     logger.critical('Hook installed as %s', hookfile)
 
 
