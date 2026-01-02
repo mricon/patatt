@@ -504,16 +504,13 @@ class DevsigHeader:
         signkey = ''
 
         logger.debug('GNUPG status:\n\t%s', status.decode().strip().replace('\n', '\n\t'))
-        gs_matches = re.search(rb'^\[GNUPG:] GOODSIG ([0-9A-F]+)\s+(.*)$', status, flags=re.M)
-        if gs_matches:
+        if re.search(rb'^\[GNUPG:] GOODSIG ([0-9A-F]+)\s+(.*)$', status, flags=re.M):
             good = True
-        vs_matches = re.search(rb'^\[GNUPG:] VALIDSIG ([0-9A-F]+) (\d{4}-\d{2}-\d{2}) (\d+)', status, flags=re.M)
-        if vs_matches:
+        if (vs_matches := re.search(rb'^\[GNUPG:] VALIDSIG ([0-9A-F]+) (\d{4}-\d{2}-\d{2}) (\d+)', status, flags=re.M)):
             valid = True
             signkey = vs_matches.groups()[0].decode()
             signtime = vs_matches.groups()[2].decode()
-        ts_matches = re.search(rb'^\[GNUPG:] TRUST_(FULLY|ULTIMATE)', status, flags=re.M)
-        if ts_matches:
+        if re.search(rb'^\[GNUPG:] TRUST_(FULLY|ULTIMATE)', status, flags=re.M):
             trusted = True
 
         return good, valid, trusted, signkey, signtime
@@ -1111,8 +1108,7 @@ def get_algo_keydata(config: GitConfigType) -> Tuple[str, str]:
                 keysrc = str(skey)
             else:
                 # finally, try .git/%s.key
-                gtdir = get_git_toplevel()
-                if gtdir:
+                if (gtdir := get_git_toplevel()):
                     skey = Path(gtdir) / '.git' / f'{identifier}.key'
                     if skey.exists():
                         keysrc = str(skey)
@@ -1429,8 +1425,7 @@ def cmd_genkey(cmdargs: argparse.Namespace, config: GitConfigType) -> None:
 
 
 def cmd_install_hook(cmdargs: argparse.Namespace, config: GitConfigType) -> None:
-    gitrepo = get_git_toplevel()
-    if not gitrepo:
+    if not (gitrepo := get_git_toplevel()):
         logger.critical('Not in a git tree, cannot install hook')
         sys.exit(1)
     hookfile = Path(gitrepo) / '.git' / 'hooks' / 'sendemail-validate'
