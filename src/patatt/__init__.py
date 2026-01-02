@@ -107,10 +107,6 @@ class DevsigHeader:
 
     Args:
         hval: Optional raw header value to parse.
-
-    Attributes:
-        hval: Canonicalized header value.
-        hdata: Dictionary of header fields (v, a, t, i, s, h, bh, b).
     """
 
     _headervals: List[bytes]
@@ -669,14 +665,6 @@ class PatattMessage:
 
     Args:
         msgdata: Raw message bytes in RFC2822 format.
-
-    Attributes:
-        headers: List of raw header lines.
-        body: Message body bytes.
-        signed: True if message contains X-Developer-Signature headers.
-        canon_headers: Canonicalized headers (after git_canonicalize).
-        canon_body: Canonicalized body (after git_canonicalize).
-        canon_identity: Email identity from canonicalized headers.
     """
 
     headers: List[bytes]

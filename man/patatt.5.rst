@@ -64,4 +64,4 @@ each subcommand.
 
 SUPPORT
 -------
-Please email tools@linux.kernel.org with support requests.
+Please email tools@kernel.org with support requests.

@@ -11,3 +11,4 @@ outgoing
 .vscode
 *.log
 out
+docs/_build
