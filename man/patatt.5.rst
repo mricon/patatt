@@ -5,7 +5,7 @@ DKIM-like cryptographic patch attestation
 -----------------------------------------
 
 :Author:    mricon@kernel.org
-:Date:      2025-06-10
+:Date:      2026-01-02
 :Copyright: The Linux Foundation and contributors
 :License:   MIT-0
 :Version:   0.7.0

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2021-2022 by The Linux Foundation
+# Copyright (C) 2021-2026 by The Linux Foundation
 # SPDX-License-Identifier: MIT-0
 #
 __author__ = 'Konstantin Ryabitsev <konstantin@linuxfoundation.org>'
@@ -55,7 +55,7 @@ KEYCACHE: Dict[Union[str, bytes], Any] = dict()
 CONFIGCACHE: Dict[str, GitConfigType] = dict()
 
 # My version
-__VERSION__ = '0.7.0-dev'
+__VERSION__ = '0.7.0'
 MAX_SUPPORTED_FORMAT_VERSION = 1
 
 class Error(Exception):
