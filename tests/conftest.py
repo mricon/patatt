@@ -20,7 +20,7 @@ This is a test email body.
 """
 
 @pytest.fixture
-def temp_data_dir() -> Generator[str]:
+def temp_data_dir() -> Generator[str, None, None]:
     """Create a temporary data directory structure for patatt."""
     with tempfile.TemporaryDirectory() as tmpdirname:
         # Create directory structure similar to patatt's data dir
