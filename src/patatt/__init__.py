@@ -1053,6 +1053,14 @@ def get_git_toplevel(gitdir: Optional[str] = None) -> str:
     return ''
 
 
+def get_git_dir() -> str:
+    cmdargs = ['git', 'rev-parse', '--git-dir']
+    ecode, out, err = _run_command(cmdargs)
+    if ecode == 0:
+        return out.decode().strip()
+    return ''
+
+
 def make_pkey_path(keytype: str, identity: str, selector: str) -> Path:
     """Construct the standard keyring path for a public key.
 
@@ -1670,10 +1678,10 @@ def cmd_genkey(cmdargs: argparse.Namespace, config: GitConfigType) -> None:
 
 
 def cmd_install_hook(cmdargs: argparse.Namespace, config: GitConfigType) -> None:
-    if not (gitrepo := get_git_toplevel()):
+    if not (gitdir := get_git_dir()):
         logger.critical('Not in a git tree, cannot install hook')
         sys.exit(1)
-    hookfile = Path(gitrepo) / '.git' / 'hooks' / 'sendemail-validate'
+    hookfile = Path(gitdir) / 'hooks' / 'sendemail-validate'
     if hookfile.exists():
         logger.critical('Hook already exists: %s', hookfile)
         sys.exit(1)
