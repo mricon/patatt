@@ -151,8 +151,7 @@ Reasons to choose OpenSSH keys
   passphrase caching
 - You can use ssh keys with u2f hardware tokens for additional
   protection of your private key data
-- Very recent versions of git can also use ssh keys to sign tags and
-  commits
+- Since version 2.34 git can also use ssh keys to sign tags and commits
 
 Reasons to choose a standalone ed25519 key
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
