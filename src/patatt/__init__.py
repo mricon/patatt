@@ -1312,10 +1312,13 @@ def get_algo_keydata(config: GitConfigType) -> Tuple[str, str]:
         return algo, keydata
 
     if not config.get('signingkey'):
-        if usercfg.get('signingkey'):
-            logger.info('N: Using pgp key %s defined by user.signingkey', usercfg.get('signingkey'))
+        user_signingkey = usercfg.get('signingkey')
+        if user_signingkey:
+            gpg_format = get_config_from_git(r'gpg\..*').get('format', 'gpg')
+            key_algo = 'openssh' if gpg_format == 'ssh' else 'openpgp'
+            logger.info('N: Using %s key %s defined by user.signingkey', key_algo, user_signingkey)
             logger.info('N: Override by setting patatt.signingkey')
-            config['signingkey'] = 'openpgp:%s' % usercfg.get('signingkey')
+            config['signingkey'] = '%s:%s' % (key_algo, user_signingkey)
         else:
             logger.critical('E: patatt.signingkey is not set')
             logger.critical('E: Perhaps you need to run genkey first?')
