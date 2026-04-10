@@ -3,6 +3,7 @@
 *.swp
 __pycache__
 .venv
+uv.lock
 .idea
 *.egg-info
 build
