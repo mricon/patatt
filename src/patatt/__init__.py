@@ -55,7 +55,7 @@ KEYCACHE: Dict[Union[str, bytes], Any] = dict()
 CONFIGCACHE: Dict[str, GitConfigType] = dict()
 
 # My version
-__VERSION__ = '0.7.0'
+__VERSION__ = '0.7.1'
 MAX_SUPPORTED_FORMAT_VERSION = 1
 
 class Error(Exception):

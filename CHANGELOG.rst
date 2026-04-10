@@ -1,6 +1,30 @@
 Changelog
 =========
 
+v0.7.1 (2026-04-10)
+-------------------
+
+Bug Fixes
+~~~~~~~~~
+
+- Fix ``user.signingkey`` handling for SSH keys by checking
+  ``gpg.format`` to determine the key type, instead of always
+  assuming OpenPGP.
+
+- Make ``install-hook`` work correctly in git submodules by using
+  ``git rev-parse --git-dir`` instead of assuming ``.git``.
+
+- Fix compatibility with Python versions before 3.13 by using the
+  older ``Generator`` type syntax in test fixtures.
+
+- Fix typo in package classifier metadata.
+
+Thanks
+~~~~~~
+
+- Bingwu Zhang
+- Uwe Kleine-König
+
 v0.7.0 (2026-01-02)
 -------------------
 
